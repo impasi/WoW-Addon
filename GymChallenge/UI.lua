@@ -8,12 +8,41 @@ local ROW_H = 36
 local RANK_ROWS = 10
 local WIN_W = 380
 
+local WHITE = "Interface\\Buttons\\WHITE8x8"
 local BACKDROP = {
-  bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+  bgFile = WHITE,
   edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-  tile = true, tileSize = 16, edgeSize = 14,
+  tile = false, edgeSize = 12,
   insets = { left = 3, right = 3, top = 3, bottom = 3 },
 }
+
+-- Look & feel
+local THEME = {
+  bg = { 0.05, 0.06, 0.08, 0.94 },
+  border = { 0.30, 0.70, 0.50, 0.90 },
+  titleBar = { 0.10, 0.32, 0.23, 0.95 },
+  rowA = { 1, 1, 1, 0.06 },
+  rowB = { 1, 1, 1, 0.025 },
+  own = { 0.20, 0.80, 0.50, 0.14 },
+}
+local ICON_MAIN = "Interface\\Icons\\Spell_Nature_Strength"
+
+-- Icon + accent color per exercise kind.
+local KIND_STYLE = {
+  squats  = { icon = "Interface\\Icons\\Ability_Rogue_Sprint",            color = { 0.95, 0.65, 0.20 } },
+  pushups = { icon = "Interface\\Icons\\Spell_Holy_SealOfMight",          color = { 0.95, 0.85, 0.35 } },
+  burpees = { icon = "Interface\\Icons\\Ability_Warrior_Charge",          color = { 0.90, 0.35, 0.30 } },
+  situps  = { icon = "Interface\\Icons\\Ability_Rogue_FeignDeath",        color = { 0.55, 0.70, 0.95 } },
+  plank   = { icon = "Interface\\Icons\\Ability_Warrior_DefensiveStance", color = { 0.45, 0.85, 0.55 } },
+  flight  = { icon = "Interface\\Icons\\Ability_Druid_FlightForm",        color = { 0.40, 0.75, 0.95 } },
+}
+UI.KIND_STYLE = KIND_STYLE
+
+local function styleBackdrop(f, alpha)
+  f:SetBackdrop(BACKDROP)
+  f:SetBackdropColor(THEME.bg[1], THEME.bg[2], THEME.bg[3], alpha or THEME.bg[4])
+  if f.SetBackdropBorderColor then f:SetBackdropBorderColor(unpack(THEME.border)) end
+end
 
 -- Width/height of a frame, with a fallback while the size is not known yet.
 local function frameW(f, default)
@@ -41,8 +70,7 @@ local function makeWindow(name, w, h, posKey, opts)
     h = math.max(opts.minH, size.h)
   end
   f:SetSize(w, h)
-  f:SetBackdrop(BACKDROP)
-  f:SetBackdropColor(0, 0, 0, 0.85)
+  styleBackdrop(f)
   f:SetFrameStrata("MEDIUM")
   f:SetClampedToScreen(true)
   f:EnableMouse(true)
@@ -59,8 +87,20 @@ local function makeWindow(name, w, h, posKey, opts)
   else
     f:SetPoint("CENTER")
   end
+  local bar = f:CreateTexture(nil, "ARTWORK")
+  bar:SetPoint("TOPLEFT", 4, -4)
+  bar:SetPoint("TOPRIGHT", -4, -4)
+  bar:SetHeight(24)
+  bar:SetColorTexture(unpack(THEME.titleBar))
+  f.titleBar = bar
+  local icon = f:CreateTexture(nil, "OVERLAY")
+  icon:SetSize(18, 18)
+  icon:SetPoint("TOPLEFT", 9, -7)
+  icon:SetTexture(ICON_MAIN)
+  if icon.SetTexCoord then icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+  f.titleIcon = icon
   f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  f.title:SetPoint("TOPLEFT", 10, -10)
+  f.title:SetPoint("LEFT", icon, "RIGHT", 6, 0)
   local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", 2, 2)
 
@@ -129,8 +169,7 @@ function UI:Confirm(text, onOk)
   if not confirm then
     confirm = CreateFrame("Frame", "GymChallengeConfirm", UIParent, "BackdropTemplate")
     confirm:SetSize(300, 100)
-    confirm:SetBackdrop(BACKDROP)
-    confirm:SetBackdropColor(0, 0, 0, 0.95)
+    styleBackdrop(confirm, 0.97)
     confirm:SetFrameStrata("DIALOG")
     confirm:SetPoint("CENTER", 0, 120)
     confirm:EnableMouse(true)
@@ -161,8 +200,7 @@ function UI:AskSaveSpot()
   if not choice then
     choice = CreateFrame("Frame", "GymChallengeSpotChoice", UIParent, "BackdropTemplate")
     choice:SetSize(340, 120)
-    choice:SetBackdrop(BACKDROP)
-    choice:SetBackdropColor(0, 0, 0, 0.95)
+    styleBackdrop(choice, 0.97)
     choice:SetFrameStrata("DIALOG")
     choice:SetPoint("CENTER", 0, 120)
     choice:EnableMouse(true)
@@ -249,7 +287,8 @@ local function placeMain(f)
     end
   end
   local statusY = 32 + #top * BTN_LINE + 2
-  f.status:ClearAllPoints(); f.status:SetPoint("TOPLEFT", 10, -statusY)
+  f.statusDot:ClearAllPoints(); f.statusDot:SetPoint("TOPLEFT", 10, -statusY - 1)
+  f.status:ClearAllPoints(); f.status:SetPoint("TOPLEFT", 22, -statusY)
   f.warn:ClearAllPoints();   f.warn:SetPoint("TOPLEFT", 10, -statusY - 14)
   f.count:ClearAllPoints();  f.count:SetPoint("TOPLEFT", 10, -statusY - 30)
   local rowsTop = statusY + 46
@@ -278,7 +317,8 @@ UI.placeMain = placeMain
 local function layoutMain(f)
   if not f.status then return end
   local W = frameW(f, WIN_W)
-  for _, fs in ipairs({ f.status, f.warn, f.count, f.note }) do fs:SetWidth(W - 20) end
+  for _, fs in ipairs({ f.warn, f.count, f.note }) do fs:SetWidth(W - 20) end
+  f.status:SetWidth(W - 32)
   if f.rows then UI:Refresh() end
 end
 
@@ -303,6 +343,9 @@ function UI:Init()
   f.mode = makeButton(f, 110, function() GC.Areas.CycleMode() end)
   f.mode:SetPoint("LEFT", f.sound, "RIGHT", 4, 0)
 
+  f.statusDot = f:CreateTexture(nil, "OVERLAY")
+  f.statusDot:SetSize(8, 8)
+  f.statusDot:SetTexture(WHITE)
   f.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   f.status:SetPoint("TOPLEFT", 10, -60)
   oneLine(f.status, WIN_W - 20)
@@ -324,12 +367,26 @@ function UI:Init()
     r:SetPoint("RIGHT", f, "RIGHT", -8, 0)
     r.bg = r:CreateTexture(nil, "BACKGROUND")
     r.bg:SetAllPoints()
-    r.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.04 or 0.08)
+    r.bg:SetColorTexture(unpack((i % 2 == 0) and THEME.rowB or THEME.rowA))
+    r.accent = r:CreateTexture(nil, "ARTWORK")
+    r.accent:SetPoint("TOPLEFT"); r.accent:SetPoint("BOTTOMLEFT")
+    r.accent:SetWidth(3)
+    r.accent:SetTexture(WHITE)
+    r.icon = r:CreateTexture(nil, "ARTWORK")
+    r.icon:SetSize(26, 26)
+    r.icon:SetPoint("LEFT", 7, 0)
+    if r.icon.SetTexCoord then r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+    r.progress = CreateFrame("StatusBar", nil, r)
+    r.progress:SetPoint("BOTTOMLEFT", 3, 0)
+    r.progress:SetPoint("BOTTOMRIGHT", 0, 0)
+    r.progress:SetHeight(3)
+    r.progress:SetStatusBarTexture(WHITE)
+    r.progress:Hide()
     r.text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    r.text:SetPoint("TOPLEFT", 5, -4)
+    r.text:SetPoint("TOPLEFT", 39, -4)
     oneLine(r.text, 200)
     r.sub = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    r.sub:SetPoint("BOTTOMLEFT", 5, 4)
+    r.sub:SetPoint("BOTTOMLEFT", 39, 5)
     oneLine(r.sub, 200)
     r.b1 = makeButton(r, 44, function() if r.onB1 then r.onB1() end end)
     r.b1:SetPoint("RIGHT", -4, 0)
@@ -373,9 +430,8 @@ local LANDED_SHOW_SECONDS = 15
 
 function UI:InitFlightTimer()
   local t = CreateFrame("Frame", "GymChallengeFlightTimer", UIParent, "BackdropTemplate")
-  t:SetSize(320, 44)
-  t:SetBackdrop(BACKDROP)
-  t:SetBackdropColor(0, 0, 0, 0.75)
+  t:SetSize(320, 50)
+  styleBackdrop(t, 0.85)
   t:SetFrameStrata("HIGH")
   t:SetClampedToScreen(true)
   t:EnableMouse(true)
@@ -393,8 +449,20 @@ function UI:InitFlightTimer()
   else
     t:SetPoint("TOP", UIParent, "TOP", 0, -140)
   end
+  t.icon = t:CreateTexture(nil, "ARTWORK")
+  t.icon:SetSize(30, 30)
+  t.icon:SetPoint("LEFT", 10, 2)
+  t.icon:SetTexture(KIND_STYLE.flight.icon)
+  if t.icon.SetTexCoord then t.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
   t.text = t:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  t.text:SetPoint("CENTER")
+  t.text:SetPoint("LEFT", t.icon, "RIGHT", 10, 0)
+  t.bar = CreateFrame("StatusBar", nil, t)
+  t.bar:SetPoint("BOTTOMLEFT", 5, 5)
+  t.bar:SetPoint("BOTTOMRIGHT", -5, 5)
+  t.bar:SetHeight(4)
+  t.bar:SetStatusBarTexture(WHITE)
+  t.bar:SetStatusBarColor(0.40, 0.75, 0.95, 0.95)
+  t.bar:Hide()
   if t.text.SetWordWrap then t.text:SetWordWrap(false) end
   t:Hide()
   self.flightTimer = t
@@ -411,7 +479,7 @@ end
 local function setTimerText(t, text)
   t.text:SetText(text)
   local tw = t.text.GetStringWidth and t.text:GetStringWidth() or 0
-  t:SetWidth(math.max(220, math.ceil(tw) + 40))
+  t:SetWidth(math.max(240, math.ceil(tw) + 70))
 end
 
 function UI:RefreshFlightTimer()
@@ -423,12 +491,17 @@ function UI:RefreshFlightTimer()
     if expected then
       setTimerText(t, GC.L("flight_timer_known", GC.FormatDuration(expected),
         GC.FormatDuration(math.max(0, expected - elapsed))))
+      t.bar:SetMinMaxValues(0, math.max(1, expected))
+      t.bar:SetValue(math.min(expected, elapsed))
+      t.bar:Show()
     else
       setTimerText(t, GC.L("flight_timer_unknown", GC.FormatDuration(elapsed)))
+      t.bar:Hide()
     end
     t:Show()
   elseif self.landedUntil and time() < self.landedUntil then
     setTimerText(t, "|cff33ff33" .. GC.L("flight_landed", GC.FormatDuration(self.landedDuration)) .. "|r")
+    t.bar:Hide()
     t:Show()
   else
     t:Hide()
@@ -441,21 +514,35 @@ function UI:RefreshStatus()
   if GC.Events and GC.Events.IsFlying() then
     local expected = GC.Events.ExpectedDuration()
     f.status:SetText(GC.L("area_flying", expected and GC.FormatDuration(expected) or GC.L("flight_unknown")))
+    f.statusDot:SetVertexColor(0.40, 0.75, 0.95)
   elseif GC.Areas.IsCrowded() then
     f.status:SetText(GC.L("area_crowded", GC.L(GC.Areas.reason or "reason_manual"), GC.cdb.crowded.count))
+    f.statusDot:SetVertexColor(1.00, 0.60, 0.15)
   else
     f.status:SetText(GC.L("area_uncrowded"))
+    f.statusDot:SetVertexColor(0.30, 0.85, 0.45)
   end
   f.warn:SetText(GC.Paladins.NameplatesEnabled() and "" or GC.L("warn_nameplates"))
 end
 
 local function configureRow(r, task, rowW)
   r.b1:Hide(); r.b2:Hide(); r.onB1 = nil; r.onB2 = nil
+  r.progress:Hide()
+  local style = KIND_STYLE[task.kind] or KIND_STYLE.squats
+  r.icon:SetTexture(style.icon)
+  r.accent:SetVertexColor(style.color[1], style.color[2], style.color[3], 1)
+  r.progress:SetStatusBarColor(style.color[1], style.color[2], style.color[3], 0.9)
   r.text:SetText(GC.TaskText(task))
   local sub = GC.ReasonText(task)
   local buttonsW = 0
 
   if task.kind == "flight" then
+    local expected = task.state == "running" and GC.Events.ExpectedDuration()
+    if expected and expected > 0 then
+      r.progress:SetMinMaxValues(0, expected)
+      r.progress:SetValue(math.min(expected, time() - task.start))
+      r.progress:Show()
+    end
     if task.state == "landed" then
       sub = "|cffffd100" .. GC.L("flight_question") .. "|r"
       setButtonText(r.b1, GC.L("btn_no")); r.b1:Show()
@@ -471,6 +558,9 @@ local function configureRow(r, task, rowW)
     if task.kind == "plank" then
       if task.timerStart then
         local left = task.amount - (time() - task.timerStart)
+        r.progress:SetMinMaxValues(0, task.amount)
+        r.progress:SetValue(math.min(task.amount, time() - task.timerStart))
+        r.progress:Show()
         if left > 0 then
           sub = "|cffffd100" .. GC.L("timer_left", GC.FormatDuration(left)) .. "|r"
         else
@@ -485,7 +575,7 @@ local function configureRow(r, task, rowW)
   end
   r.sub:SetText(sub)
   -- Text uses the space left of the buttons, so it never runs under them.
-  local textW = rowW - 10 - buttonsW - 8
+  local textW = rowW - 39 - buttonsW - 8
   r.text:SetWidth(textW)
   r.sub:SetWidth(textW)
 end
@@ -632,7 +722,8 @@ function UI:InitRank()
     r:EnableMouse(true)
     r.bg = r:CreateTexture(nil, "BACKGROUND")
     r.bg:SetAllPoints()
-    r.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.03 or 0.07)
+    r.bg:SetColorTexture(unpack((i % 2 == 0) and THEME.rowB or THEME.rowA))
+    r.stripe = i % 2 == 0
     r.cells = {}
     for _, c in ipairs(RANK_COLUMNS) do
       local fs = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -708,10 +799,12 @@ function UI:RefreshRank()
       local e = item.entry
       r.label = item.label
       local color = item.self and "|cff33ff99" or "|cffffffff"
+      local medal = ({ "|cffffd700", "|cffd0d0d0", "|cffcd7f32" })[i] or "|cff888888"
+      r.bg:SetColorTexture(unpack(item.self and THEME.own or (r.stripe and THEME.rowB or THEME.rowA)))
       for _, c in ipairs(RANK_COLUMNS) do
         local text
         if c.key == "name" then
-          text = color .. i .. ". " .. item.label .. "|r"
+          text = medal .. i .. ".|r " .. color .. item.label .. "|r"
         elseif c.text then
           text = c.text(e)
         else
@@ -829,7 +922,8 @@ function UI:InitHistory()
     r:SetPoint("RIGHT", f, "RIGHT", -8, 0)
     r.bg = r:CreateTexture(nil, "BACKGROUND")
     r.bg:SetAllPoints()
-    r.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.03 or 0.07)
+    r.bg:SetColorTexture(unpack((i % 2 == 0) and THEME.rowB or THEME.rowA))
+    r.stripe = i % 2 == 0
     r.cells = {}
     for _, c in ipairs(HIST_COLUMNS) do
       local fs = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
