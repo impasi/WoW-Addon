@@ -9,7 +9,7 @@ Events.loginCheckPending = true
 -- Death: 10 squats
 -------------------------------------------------------------------------------
 function Events.OnDeath()
-  GC.AddTask("squats", 10, "r_death")
+  GC.Assign("death", 1, "r_death")
 end
 GC.On("PLAYER_DEAD", Events.OnDeath)
 
@@ -17,7 +17,7 @@ GC.On("PLAYER_DEAD", Events.OnDeath)
 -- Level up: 5 burpees
 -------------------------------------------------------------------------------
 function Events.OnLevelUp(level)
-  GC.AddTask("burpees", 5, "r_level", tonumber(level) or GC.SafeCall(UnitLevel, "player") or 0)
+  GC.Assign("level", 1, "r_level", tonumber(level) or GC.SafeCall(UnitLevel, "player") or 0)
 end
 GC.On("PLAYER_LEVEL_UP", Events.OnLevelUp)
 
@@ -77,13 +77,20 @@ function Events.StartFlight(startTime, isTest)
   pendingRoute = nil
   -- Leaving a crowded area by flight: show the collected paladins before the flight.
   GC.Areas.Update()
-  local task = GC.AddTask("flight", 0, "r_flight", nil, { state = "running", start = GC.cdb.flight.start })
-  GC.cdb.flight.taskId = task.id
+  local cfg = GC.Challenge("flight")
+  GC.cdb.flight.mode = cfg.enabled and cfg.ex or "off"
   local expected = Events.ExpectedDuration()
-  if expected then
-    GC.Alert(GC.L("alert_flight_start_known", GC.FormatDuration(expected)), "flight")
-  else
-    GC.Alert(GC.L("alert_flight_start"), "flight")
+  if GC.cdb.flight.mode == "flightplank" then
+    -- Original rule: plank for the whole flight.
+    local task = GC.AddTask("flight", 0, "r_flight", nil, { state = "running", start = GC.cdb.flight.start })
+    GC.cdb.flight.taskId = task.id
+    if expected then
+      GC.Alert(GC.L("alert_flight_start_known", GC.FormatDuration(expected)), "flight")
+    else
+      GC.Alert(GC.L("alert_flight_start"), "flight")
+    end
+  elseif GC.cdb.flight.mode ~= "off" then
+    GC.Alert(GC.L("alert_flight_start_per", GC.AssignText("flight", 1)), "flight")
   end
   if GC.UI and GC.UI.RefreshFlightTimer then GC.UI:RefreshFlightTimer() end
 end
@@ -95,18 +102,27 @@ function Events.EndFlight(endTime, recovered)
   if not f then return end
   GC.cdb.flight = nil
   local duration = math.max(0, (endTime or time()) - f.start)
-  local task = GC.FindTask(f.taskId)
-  if task then
-    task.state = "landed"   -- counts as done; the player answers "made it?"
-    task.amount = duration
-  else
-    task = GC.AddTask("flight", duration, "r_flight", nil, { state = "landed" })
+  local mode = f.mode or "flightplank"
+  if mode == "flightplank" then
+    local task = GC.FindTask(f.taskId)
+    if task then
+      task.state = "landed"   -- counts as done; the player answers "made it?"
+      task.amount = duration
+    else
+      task = GC.AddTask("flight", duration, "r_flight", nil, { state = "landed" })
+    end
+    GC.AddHistory(task, "landed")
+  elseif mode ~= "off" then
+    -- Amount of the chosen exercise per full 20 s of flight time.
+    local steps = math.floor(duration / GC.FLIGHT_STEP)
+    if steps > 0 then GC.Assign("flight", steps, "r_flight_time", GC.FormatDuration(duration)) end
   end
-  GC.AddHistory(task, "landed")
   if f.route and not recovered and not f.test and duration >= 5 then
     GC.db.flightTimes[f.route] = { t = duration, n = ((GC.db.flightTimes[f.route] or {}).n or 0) + 1 }
   end
-  GC.Alert(GC.L("alert_flight_end", GC.FormatDuration(duration)), "flight")
+  if mode == "flightplank" then
+    GC.Alert(GC.L("alert_flight_end", GC.FormatDuration(duration)), "flight")
+  end
   if GC.UI and GC.UI.ShowLanded then GC.UI:ShowLanded(duration) end
   GC.Areas.Update()
   if GC.UI then GC.UI:Refresh() end
@@ -165,7 +181,7 @@ function Events.OnEnteringWorld(isInitialLogin, isReloadingUi)
   elseif not isReloadingUi and was and not now then
     local ghost = GC.SafeCall(UnitIsDeadOrGhost, "player")
     if not ghost then
-      GC.AddTask("situps", 20, "r_dungeon")
+      GC.Assign("dungeon", 1, "r_dungeon")
     end
   end
   GC.cdb.wasInInstance = now
@@ -204,7 +220,7 @@ function Events.CheckEliteDeath()
   if GC.SafeCall(UnitIsDead, "target") then
     if not counted[guid] then
       counted[guid] = true
-      GC.AddTask("plank", 20, "r_elite", watch.name)
+      GC.Assign("elite", 1, "r_elite", watch.name)
     end
     watch = nil
   end
@@ -229,7 +245,7 @@ function Events.OnTaxiNodeMessage(msg)
   local now = GetTime()
   if now - lastTaxiNode < 3 then return end -- same discovery reported twice
   lastTaxiNode = now
-  GC.AddTask("squats", 15, "r_taxinode")
+  GC.Assign("taxinode", 1, "r_taxinode")
 end
 GC.On("UI_INFO_MESSAGE", function(_, msg) Events.OnTaxiNodeMessage(msg) end)
 GC.On("CHAT_MSG_SYSTEM", function(msg) Events.OnTaxiNodeMessage(msg) end)

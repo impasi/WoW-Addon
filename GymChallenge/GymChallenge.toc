@@ -11,6 +11,7 @@
 
 Locales.lua
 Core.lua
+Challenges.lua
 Areas.lua
 Paladins.lua
 Events.lua

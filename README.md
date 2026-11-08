@@ -16,8 +16,16 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 | Level-up | 5 Burpees | `PLAYER_LEVEL_UP` |
 | Fliegen | Plank vom Abflug bis zur Landung, mit Anzeige der erwarteten Flugzeit | `UnitOnTaxi("player")`, Strecke über `TakeTaxiNode` (Secure-Hook) |
 | Dungeon, Raid oder Schlachtfeld verlassen | 20 Sit-ups | `PLAYER_ENTERING_WORLD` + `IsInInstance()` |
-| Elite getötet (nicht in Instanzen) | 20 Sek. Plank, der Timer startet erst per Klick | aktuelles Ziel |
+| Elite getötet (nicht in Instanzen) | 1 Min. Plank, der Timer startet erst per Klick | aktuelles Ziel |
 | Neuer Flugpunkt | 15 Squats | Systemmeldung `ERR_NEWTAXIPATH` |
+
+Das sind die Standardwerte. Unter **Optionen** (Button im Hauptfenster oder `/gym options`) kannst du jede Challenge ein- und ausschalten und Übung und Anzahl ändern:
+- Ein Klick auf den Übungs-Button wechselt die Übung. Mit **-** und **+** änderst du die Anzahl, mit Shift-Klick in 10er-Schritten.
+- **Plank:** 1 Wiederholung = 1 Minute.
+- **Fliegen:** Standard ist „Plank ganzer Flug“. Wählst du eine andere Übung, gilt die Anzahl pro vollen 20 Sekunden Flugzeit. Ein Beispiel: 2 Squats bei 65 s Flug ergeben 6 Squats nach der Landung.
+- **Paladine:** Die Anzahl gilt pro gezähltem untoten Paladin.
+- Eine ausgeschaltete Challenge weist nichts zu. Bei den Paladinen startet sie auch keinen Cooldown.
+- **Standard** setzt alles zurück. Die Einstellungen gelten für alle deine Charaktere.
 
 ### Details zu den Regeln
 - **Paladine:** Gezählt werden nur **untote** Paladin-Spieler (Rasse über `UnitRace`, sprachunabhängig `Scourge`). Erkannt werden alle Paladin-Spieler, für die der Client eine Namensplakette anzeigt, außerdem dein Ziel und der Spieler unter der Maus. Das gilt für beide Fraktionen. Die eigene Gruppe zählt nie, du selbst auch nicht. Jeder Name zählt höchstens einmal pro Stunde. Dieser Cooldown gilt nur für die laufende Sitzung und nur für den aktuellen Charakter. Nach `/reload` oder einem Neustart beginnt er von vorn.
@@ -47,6 +55,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 ### Befehle
 ```
 /gym                    Fenster an/aus
+/gym options            Challenge-Optionen
 /gym rank               Gruppen-Rangliste
 /gym history            Verlauf deiner Übungen
 /gym minimap            Minimap-Button ein/aus

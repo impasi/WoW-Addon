@@ -294,7 +294,7 @@ local function placeMain(f)
   f.count:ClearAllPoints();  f.count:SetPoint("TOPLEFT", 10, -statusY - 30)
   local rowsTop = statusY + 46
 
-  local bottom = flowLines({ f.clear, f.rank, f.history, f.spot }, W - 16) -- keep clear of the grip
+  local bottom = flowLines({ f.clear, f.rank, f.history, f.spot, f.options }, W - 16) -- keep clear of the grip
   for li, line in ipairs(bottom) do
     local x = 8
     for _, b in ipairs(line) do
@@ -417,6 +417,7 @@ function UI:Init()
   f.rank:SetPoint("LEFT", f.clear, "RIGHT", 4, 0)
   f.spot = makeButton(f, 70, function() UI:AskSaveSpot() end)
   f.history = makeButton(f, 60, function() UI:ToggleHistory() end)
+  f.options = makeButton(f, 60, function() UI:ToggleOptions() end)
   f.history:SetPoint("LEFT", f.rank, "RIGHT", 4, 0)
   f.spot:SetPoint("LEFT", f.history, "RIGHT", 4, 0)
 
@@ -497,7 +498,8 @@ function UI:RefreshFlightTimer()
     local elapsed = time() - GC.cdb.flight.start
     local expected = GC.Events.ExpectedDuration()
     if expected then
-      setTimerText(t, GC.L("flight_timer_known", GC.FormatDuration(expected),
+      local key = (GC.cdb.flight.mode == "flightplank" or not GC.cdb.flight.mode) and "flight_timer_known" or "flight_timer_known_plain"
+      setTimerText(t, GC.L(key, GC.FormatDuration(expected),
         GC.FormatDuration(math.max(0, expected - elapsed))))
       t.bar:SetMinMaxValues(0, math.max(1, expected))
       t.bar:SetValue(math.min(expected, elapsed))
@@ -609,6 +611,7 @@ function UI:Refresh()
   setButtonText(f.clear, GC.L("btn_clear"))
   setButtonText(f.rank, GC.L("btn_rank"))
   setButtonText(f.history, GC.L("btn_history"))
+  setButtonText(f.options, GC.L("btn_options"))
   setButtonText(f.spot, GC.L("btn_spot"))
   f.note:SetText(GC.L("assigned_note"))
   placeMain(f)
@@ -1020,6 +1023,126 @@ function UI:ToggleHistory()
 end
 
 -------------------------------------------------------------------------------
+-- Options window: per challenge on/off, exercise and amount.
+-------------------------------------------------------------------------------
+local OPT_ROW_H = 30
+local OPT_W = 560
+
+local function unitText(key, cfg)
+  if cfg.ex == "flightplank" then return "" end
+  local u = (cfg.ex == "plank") and GC.L("opt_unit_min") or GC.L("opt_unit_reps")
+  if key == "flight" then return u .. " " .. GC.L("opt_per_20s") end
+  if key == "paladin_crowded" or key == "paladin_open" then return u .. " " .. GC.L("opt_per_paladin") end
+  return u
+end
+
+function UI:InitOptions()
+  local n = #GC.CHALLENGE_ORDER
+  local f = makeWindow("GymChallengeOptionsFrame", OPT_W, 84 + n * OPT_ROW_H + 50, "optionsWindow")
+  self.optionsFrame = f
+  f.note = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  f.note:SetPoint("TOPLEFT", 12, -34)
+  f.note:SetWidth(OPT_W - 24)
+  f.note:SetJustifyH("LEFT")
+
+  f.rows = {}
+  for i, key in ipairs(GC.CHALLENGE_ORDER) do
+    local r = CreateFrame("Frame", nil, f)
+    r:SetHeight(OPT_ROW_H - 2)
+    r:SetPoint("TOPLEFT", 8, -70 - (i - 1) * OPT_ROW_H)
+    r:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+    r.key = key
+    r.bg = r:CreateTexture(nil, "BACKGROUND")
+    r.bg:SetAllPoints()
+    r.bg:SetColorTexture(unpack((i % 2 == 0) and THEME.rowB or THEME.rowA))
+
+    r.check = CreateFrame("CheckButton", nil, r, "UICheckButtonTemplate")
+    r.check:SetSize(24, 24)
+    r.check:SetPoint("LEFT", 2, 0)
+    r.check:SetScript("OnClick", function()
+      local cfg = GC.Challenge(key)
+      cfg.enabled = not cfg.enabled
+      UI:RefreshOptions()
+    end)
+    r.label = r:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    r.label:SetPoint("LEFT", r.check, "RIGHT", 4, 0)
+    oneLine(r.label, 210)
+
+    r.ex = makeButton(r, 150, function()
+      local cfg = GC.Challenge(key)
+      local choices = GC.ExerciseChoices(key)
+      local idx = 1
+      for ci, c in ipairs(choices) do if c == cfg.ex then idx = ci end end
+      cfg.ex = choices[(idx % #choices) + 1]
+      UI:RefreshOptions()
+    end)
+    r.ex.minW = 150
+    r.ex:SetPoint("LEFT", 244, 0)
+
+    local function step(delta)
+      local cfg = GC.Challenge(key)
+      if IsShiftKeyDown and IsShiftKeyDown() then delta = delta * 10 end
+      cfg.amount = math.max(1, math.min(999, (cfg.amount or 1) + delta))
+      UI:RefreshOptions()
+    end
+    r.minus = makeButton(r, 24, function() step(-1) end)
+    r.minus:SetPoint("LEFT", 400, 0)
+    r.value = r:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    r.value:SetPoint("LEFT", r.minus, "RIGHT", 2, 0)
+    r.value:SetWidth(34)
+    r.value:SetJustifyH("CENTER")
+    r.plus = makeButton(r, 24, function() step(1) end)
+    r.plus:SetPoint("LEFT", r.value, "RIGHT", 2, 0)
+    r.unit = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    r.unit:SetPoint("LEFT", r.plus, "RIGHT", 6, 0)
+    oneLine(r.unit, 90)
+    f.rows[i] = r
+  end
+
+  f.reset = makeButton(f, 120, function()
+    UI:Confirm(GC.L("opt_confirm_reset"), function() GC.ResetChallenges(); UI:RefreshOptions() end)
+  end)
+  f.reset:SetPoint("BOTTOMLEFT", 10, 12)
+  f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  f.hint:SetPoint("LEFT", f.reset, "RIGHT", 10, 0)
+  oneLine(f.hint, OPT_W - 170)
+  f:Hide()
+end
+
+function UI:RefreshOptions()
+  local f = self.optionsFrame
+  if not f or not f:IsShown() then return end
+  f.title:SetText(GC.L("opt_title"))
+  f.note:SetText(GC.L("opt_note"))
+  setButtonText(f.reset, GC.L("opt_reset"))
+  f.hint:SetText(GC.L("opt_hint"))
+  for _, r in ipairs(f.rows) do
+    local cfg = GC.Challenge(r.key)
+    r.check:SetChecked(cfg.enabled and true or false)
+    r.label:SetText((cfg.enabled and "" or "|cff888888") .. GC.L("ch_" .. r.key) .. (cfg.enabled and "" or "|r"))
+    setButtonText(r.ex, GC.L("exn_" .. cfg.ex))
+    local fixed = cfg.ex == "flightplank"
+    for _, w in ipairs({ r.minus, r.plus }) do
+      if fixed then w:Hide() else w:Show() end
+      if cfg.enabled then w:Enable() else w:Disable() end
+    end
+    if cfg.enabled then r.ex:Enable() else r.ex:Disable() end
+    r.value:SetText(fixed and "" or tostring(cfg.amount))
+    r.unit:SetText(unitText(r.key, cfg))
+  end
+end
+
+function UI:ToggleOptions()
+  if not self.optionsFrame then self:InitOptions() end
+  if self.optionsFrame:IsShown() then
+    self.optionsFrame:Hide()
+  else
+    self.optionsFrame:Show()
+    self:RefreshOptions()
+  end
+end
+
+-------------------------------------------------------------------------------
 -- Slash commands
 -------------------------------------------------------------------------------
 local TESTS = {
@@ -1027,9 +1150,9 @@ local TESTS = {
   level = function() GC.Events.OnLevelUp((GC.SafeCall(UnitLevel, "player") or 1)) end,
   flightstart = function() GC.Events.StartFlight(nil, true) end,
   flightend = function() GC.Events.EndFlight() end,
-  dungeon = function() GC.AddTask("situps", 20, "r_dungeon") end,
-  elite = function() GC.AddTask("plank", 20, "r_elite", "Test-Elite") end,
-  taxinode = function() GC.AddTask("squats", 15, "r_taxinode") end,
+  dungeon = function() GC.Assign("dungeon", 1, "r_dungeon") end,
+  elite = function() GC.Assign("elite", 1, "r_elite", "Test-Elite") end,
+  taxinode = function() GC.Assign("taxinode", 1, "r_taxinode") end,
   paladin = function() GC.Paladins.Count("Testpaladin-" .. math.random(1000, 9999)) end,
 }
 
@@ -1043,6 +1166,8 @@ SlashCmdList["GYMCHALLENGE"] = function(input)
     UI:ToggleRank()
   elseif cmd == "history" then
     UI:ToggleHistory()
+  elseif cmd == "options" or cmd == "config" then
+    UI:ToggleOptions()
   elseif cmd == "minimap" then
     GC.Minimap:Toggle()
   elseif cmd == "lang" and (arg == "de" or arg == "en") then

@@ -37,19 +37,22 @@ end
 
 -- Registers a sighting. Returns true if it counted.
 function Paladins.Count(name)
+  -- A switched-off challenge neither counts nor starts the cooldown.
+  local crowded = GC.Areas.IsCrowded()
+  if not GC.ChallengeEnabled(crowded and "paladin_crowded" or "paladin_open") then return false end
   local now = GetTime()
   local last = seen[name]
   if last and now - last < COOLDOWN then return false end
   seen[name] = now
 
-  if GC.Areas.IsCrowded() then
+  if crowded then
     local c = GC.cdb.crowded
     c.count = c.count + 1
     table.insert(c.names, name)
     GC.Debug("Paladin collected (crowded): " .. name)
     if GC.UI then GC.UI:RefreshStatus() end
   else
-    GC.AddTask("pushups", 5, "r_paladin_open", name)
+    GC.Assign("paladin_open", 1, "r_paladin_open", name)
   end
   return true
 end
@@ -68,8 +71,8 @@ function Paladins.FlushCrowded(early)
   local c = GC.cdb.crowded
   local n = c.count or 0
   if n > 0 then
-    GC.AddTask("pushups", n * 1, "r_paladin_crowded", n, { silent = true })
-    GC.Alert(GC.L(early and "alert_crowded_early" or "alert_crowded_summary", n, n * 1))
+    GC.Assign("paladin_crowded", n, "r_paladin_crowded", n, { silent = true })
+    GC.Alert(GC.L(early and "alert_crowded_early" or "alert_crowded_summary", n, GC.AssignText("paladin_crowded", n)))
   end
   c.count = 0
   c.names = {}

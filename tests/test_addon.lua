@@ -1,6 +1,6 @@
 -- Logic tests for GymChallenge against the mock API. Run: python3 tests/run_tests.py
 local GC = {}
-local files = { "Locales.lua", "Core.lua", "Areas.lua", "Paladins.lua", "Events.lua", "Comm.lua", "UI.lua", "Minimap.lua" }
+local files = { "Locales.lua", "Core.lua", "Challenges.lua", "Areas.lua", "Paladins.lua", "Events.lua", "Comm.lua", "UI.lua", "Minimap.lua" }
 for _, f in ipairs(files) do
   local chunk = assert(loadfile(ADDON_DIR .. "/" .. f))
   chunk("GymChallenge", GC)
@@ -218,19 +218,19 @@ Mock.units.target = { name = "Hogger", guid = "C-1", classification = "elite" }
 Mock.fire("PLAYER_TARGET_CHANGED")
 Mock.units.target.dead = true
 Mock.fire("UNIT_HEALTH", "target"); Mock.tick(2)
-check("elite kill -> 20s plank", select(2, tasksOf("plank")) == 20)
+check("elite kill -> 1 min plank", select(2, tasksOf("plank")) == 60)
 Mock.fire("PLAYER_TARGET_CHANGED"); Mock.tick()
-check("dead elite retargeted not counted", select(2, tasksOf("plank")) == 20)
+check("dead elite retargeted not counted", select(2, tasksOf("plank")) == 60)
 Mock.instance = { true, "party" }
 Mock.units.target = { name = "Dungeonelite", guid = "C-2", classification = "elite" }
 Mock.fire("PLAYER_TARGET_CHANGED")
 Mock.units.target.dead = true
 Mock.tick(2)
-check("elite in dungeon not counted", select(2, tasksOf("plank")) == 20)
+check("elite in dungeon not counted", select(2, tasksOf("plank")) == 60)
 Mock.instance = { false, "none" }
 Mock.units.target = { name = "Wolf", guid = "C-3", classification = "normal" }
 Mock.fire("PLAYER_TARGET_CHANGED"); Mock.units.target.dead = true; Mock.tick()
-check("normal mob not counted", select(2, tasksOf("plank")) == 20)
+check("normal mob not counted", select(2, tasksOf("plank")) == 60)
 Mock.units.target = nil
 
 -- Plank timer only on click, never auto-completed
@@ -238,7 +238,7 @@ local plank
 for _, t in ipairs(GymChallengeCharDB.tasks) do if t.kind == "plank" then plank = t end end
 Mock.tick(30)
 check("timer not started automatically", plank.timerStart == nil)
-GC.StartTimer(plank.id); Mock.tick(25)
+GC.StartTimer(plank.id); Mock.tick(65)
 check("timer finished but task still open", plank.timerAlerted and GC.FindTask(plank.id) ~= nil)
 GC.CompleteTask(plank.id)
 check("manual completion removes task", GC.FindTask(plank.id) == nil)
@@ -422,6 +422,57 @@ check("taller ranking more rows", rf2.visibleRows > 10)
 local hf = GymChallengeHistoryFrame
 hf:SetSize(800, 600)
 check("taller history more rows", hf.visibleRows > 14)
+GC.ClearTasks()
+
+-- Challenge options
+GC.ClearTasks()
+GC.UI:ToggleOptions()
+local of = GymChallengeOptionsFrame
+check("options window has 8 rows", #of.rows == 8)
+local deathRow = of.rows[1]
+check("death row default", deathRow.value.text == "10" and deathRow.ex.text == "Squats")
+deathRow.plus.scripts.OnClick(); deathRow.plus.scripts.OnClick()
+check("plus raises amount", GC.Challenge("death").amount == 12 and deathRow.value.text == "12")
+deathRow.ex.scripts.OnClick()
+check("exercise cycles", GC.Challenge("death").ex == "pushups")
+Mock.fire("PLAYER_DEAD")
+check("death uses configured exercise/amount", select(2, tasksOf("pushups")) == 12)
+deathRow.check.scripts.OnClick()
+check("death switched off", not GC.Challenge("death").enabled)
+local before = #GymChallengeCharDB.tasks
+Mock.fire("PLAYER_DEAD")
+check("disabled challenge assigns nothing", #GymChallengeCharDB.tasks == before)
+-- plank = 1 minute per repetition
+local lv = GC.Challenge("level"); lv.ex = "plank"; lv.amount = 2
+Mock.fire("PLAYER_LEVEL_UP", 20)
+local lastTask = GymChallengeCharDB.tasks[#GymChallengeCharDB.tasks]
+check("plank 2 reps = 120 s", lastTask.kind == "plank" and lastTask.amount == 120)
+check("plank text in minutes", GC.TaskText(lastTask) == "2 Min. Plank")
+-- flight: per 20 s
+local fc = GC.Challenge("flight"); fc.ex = "squats"; fc.amount = 2
+GC.ClearTasks()
+GC.Events.StartFlight(nil, true)
+check("no running plank task in per-20s mode", #GymChallengeCharDB.tasks == 0)
+Mock.tick(65)
+GC.Events.EndFlight()
+local ft = GymChallengeCharDB.tasks[#GymChallengeCharDB.tasks]
+check("65 s flight = 3 steps * 2 squats", ft and ft.kind == "squats" and ft.amount == 6)
+fc.ex = "plank"; fc.amount = 1
+GC.Events.StartFlight(nil, true); Mock.tick(41); GC.Events.EndFlight()
+ft = GymChallengeCharDB.tasks[#GymChallengeCharDB.tasks]
+check("41 s flight with plank = 2 min", ft.kind == "plank" and ft.amount == 120)
+fc.enabled = false
+local cnt = #GymChallengeCharDB.tasks
+GC.Events.StartFlight(nil, true); Mock.tick(30); GC.Events.EndFlight()
+check("flight off assigns nothing", #GymChallengeCharDB.tasks == cnt)
+-- paladin off: no count, no cooldown
+GC.Challenge("paladin_open").enabled = false
+GC.Paladins.Count("AusPala")
+check("paladin off: not counted nor on cooldown", GC.Paladins.seen["AusPala"] == nil)
+-- reset
+of.reset.scripts.OnClick(); GymChallengeConfirm.ok.scripts.OnClick()
+check("defaults restored", GC.Challenge("death").enabled and GC.Challenge("death").amount == 10 and GC.Challenge("flight").ex == "flightplank")
+check("slash options", pcall(SlashCmdList["GYMCHALLENGE"], "options"))
 GC.ClearTasks()
 
 -- Secret values are skipped without errors

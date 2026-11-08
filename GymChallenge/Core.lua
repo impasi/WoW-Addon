@@ -120,7 +120,16 @@ function GC.TaskText(task)
     end
     return GC.L(task.state == "running" and "ex_flight_running" or "ex_flight_done", GC.FormatDuration(dur))
   end
+  if task.kind == "plank" then return GC.L("ex_plank", GC.FormatPlank(task.amount)) end
   return GC.L("ex_" .. task.kind, task.amount)
+end
+
+-- 60 -> "1 Min.", 90 -> "1:30 Min.", 20 -> "20 Sek."
+function GC.FormatPlank(sec)
+  sec = math.floor(sec or 0)
+  if sec < 60 then return GC.L("unit_sec", sec) end
+  if sec % 60 == 0 then return GC.L("unit_min", sec / 60) end
+  return GC.L("unit_min_s", GC.FormatDuration(sec))
 end
 
 function GC.ReasonText(task)
