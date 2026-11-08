@@ -20,7 +20,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 | Neuer Flugpunkt | 15 Squats | Systemmeldung `ERR_NEWTAXIPATH` |
 
 ### Details zu den Regeln
-- **Paladine:** Gezählt werden alle Paladin-Spieler, für die der Client eine Namensplakette anzeigt, außerdem dein Ziel und der Spieler unter der Maus. Das gilt für beide Fraktionen. Die eigene Gruppe zählt nie, du selbst auch nicht. Jeder Name zählt höchstens einmal pro Stunde. Dieser Cooldown gilt nur für die laufende Sitzung und nur für den aktuellen Charakter. Nach `/reload` oder einem Neustart beginnt er von vorn.
+- **Paladine:** Gezählt werden nur **untote** Paladin-Spieler (Rasse über `UnitRace`, sprachunabhängig `Scourge`). Erkannt werden alle Paladin-Spieler, für die der Client eine Namensplakette anzeigt, außerdem dein Ziel und der Spieler unter der Maus. Das gilt für beide Fraktionen. Die eigene Gruppe zählt nie, du selbst auch nicht. Jeder Name zählt höchstens einmal pro Stunde. Dieser Cooldown gilt nur für die laufende Sitzung und nur für den aktuellen Charakter. Nach `/reload` oder einem Neustart beginnt er von vorn.
 - **Crowded Areas:**
   - Hauptstädte, erkannt über Karten-ID oder Zonenname. Mit `/gym city` fügst du die aktuelle Zone als Stadt hinzu oder entfernst sie wieder.
   - Häfen, erkannt über Zonen- und Unterzonennamen.

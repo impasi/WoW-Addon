@@ -25,6 +25,10 @@ function Paladins.GetPaladinName(unit)
   if isGroupMember(unit) then return nil end
   local _, classFile = GC.SafeCall(UnitClass, unit)
   if classFile ~= "PALADIN" then return nil end
+  -- Only undead paladins count. The race token for Undead is "Scourge"
+  -- in every client language (race ID 5).
+  local _, raceFile, raceID = GC.SafeCall(UnitRace, unit)
+  if raceFile ~= "Scourge" and raceID ~= 5 then return nil end
   local name, realm = GC.SafeCall(UnitName, unit)
   if not name or name == "" or name == UNKNOWNOBJECT then return nil end
   if realm and realm ~= "" then name = name .. "-" .. realm end

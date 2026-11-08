@@ -62,6 +62,13 @@ Mock.advance(1800); Mock.tick()
 check("same paladin after hour counted again", select(2, tasksOf("pushups")) == 10)
 Mock.units.nameplate1 = nil
 
+-- Only undead paladins count
+Mock.units.nameplate1 = { name = "Menschenpala", class = "PALADIN", player = true, race = "Human" }
+Mock.units.nameplate2 = { name = "Taurenpala", class = "PALADIN", player = true, race = "Tauren" }
+Mock.tick(2)
+check("non-undead paladins not counted", select(2, tasksOf("pushups")) == 10)
+Mock.units.nameplate1, Mock.units.nameplate2 = nil, nil
+
 -- Group member paladin never counts
 Mock.units.nameplate2 = { name = "Gruppenpala", class = "PALADIN", player = true, party = true }
 Mock.tick(2)

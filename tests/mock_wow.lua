@@ -96,6 +96,11 @@ function UnitName(u)
   if u == "player" then return "Ich" end
   local x = U(u); if x then return x.name, x.realm end
 end
+function UnitRace(u)
+  local x = U(u); if not x then return nil end
+  local race = x.race or "Scourge"
+  return race, race, race == "Scourge" and 5 or 1
+end
 function UnitGUID(u) return U(u) and U(u).guid end
 function UnitClassification(u) return U(u) and U(u).classification or "normal" end
 function UnitIsDead(u) return U(u) and U(u).dead or false end

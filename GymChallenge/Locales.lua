@@ -22,8 +22,8 @@ local strings = {
     r_dungeon = "Instanz verlassen",
     r_elite = "Elite getötet: %s",
     r_taxinode = "Neuer Flugpunkt",
-    r_paladin_open = "Paladin gesehen: %s",
-    r_paladin_crowded = "%d Paladin(e) in Crowded Area",
+    r_paladin_open = "Untoter Paladin gesehen: %s",
+    r_paladin_crowded = "%d untote(r) Paladin(e) in Crowded Area",
     r_manual = "Manuell",
 
     btn_start = "Start",
@@ -155,8 +155,8 @@ local strings = {
     r_dungeon = "Left instance",
     r_elite = "Elite killed: %s",
     r_taxinode = "New flight point",
-    r_paladin_open = "Paladin seen: %s",
-    r_paladin_crowded = "%d paladin(s) in crowded area",
+    r_paladin_open = "Undead paladin seen: %s",
+    r_paladin_crowded = "%d undead paladin(s) in crowded area",
     r_manual = "Manual",
 
     btn_start = "Start",
