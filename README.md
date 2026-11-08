@@ -14,7 +14,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 | Paladin in einer Crowded Area | 1 Liegestütz pro Paladin, wird beim Verlassen angezeigt | siehe unten |
 | Paladin außerhalb | 5 Liegestütze, sofort | siehe unten |
 | Level-up | 5 Burpees | `PLAYER_LEVEL_UP` |
-| Fliegen | Plank vom Abflug bis zur Landung, mit Timer | `UnitOnTaxi("player")` |
+| Fliegen | Plank vom Abflug bis zur Landung, mit Anzeige der erwarteten Flugzeit | `UnitOnTaxi("player")`, Strecke über `TakeTaxiNode` (Secure-Hook) |
 | Dungeon, Raid oder Schlachtfeld verlassen | 20 Sit-ups | `PLAYER_ENTERING_WORLD` + `IsInInstance()` |
 | Elite getötet (nicht in Instanzen) | 20 Sek. Plank, der Timer startet erst per Klick | aktuelles Ziel |
 | Neuer Flugpunkt | 15 Squats | Systemmeldung `ERR_NEWTAXIPATH` |
@@ -27,7 +27,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
   - Ein Umkreis von 30 m um jeden Händler und Flugmeister, dessen Fenster du einmal geöffnet hast. Das Addon lernt diese Orte selbst. Mit „Ort merken“ kannst du eine Stelle auch manuell speichern, z. B. einen Schiffsanleger.
   - Mit der Schaltfläche „Gebiet“ wechselst du zwischen Auto, immer Crowded und immer Uncrowded.
   - Verlässt du eine Crowded Area per Flug, kommt die Summe **vor** dem Flug. Während des Flugs gilt die Gegend als uncrowded.
-- **Flugzeit-Anzeige:** Während des Flugs läuft oben in der Bildschirmmitte eine große Anzeige mit der Flugzeit. Sie erscheint auch bei geschlossenem Fenster und lässt sich mit der Maus verschieben. Nach der Landung zeigt sie 15 Sekunden lang die gesamte Flugzeit.
+- **Flugzeit-Anzeige:** Beim Abflug zeigt eine große, verschiebbare Anzeige oben in der Bildschirmmitte die erwartete Flugzeit und dann die Restzeit ("Flugzeit: 2:14 - noch 1:30"). Die API kennt keine Flugdauer. Deshalb merkt sich das Addon die Dauer jeder Strecke (Start > Ziel), die du einmal geflogen bist, für den ganzen Account. Beim ersten Flug auf einer Strecke steht dort "noch unbekannt". Flüge, deren Landung erst nach einem Login oder /reload erkannt wurde, werden nicht gelernt.
 - **Fliegen:** Nach der Landung gilt die Übung als erledigt. Das Addon fragt dich dann „Plank geschafft? Ja / Nein“ und speichert die Antwort in deiner Statistik.
 - **Instanz verlassen:** Ein Login nach einem Disconnect zählt nicht. Das Verlassen als Geist zählt auch nicht.
 - **Elite:** Gezählt wird, wenn dein aktuelles Ziel ein Elite ist (auch Rar-Elite und Weltboss) und stirbt. Das zählt auch, wenn ein anderer Spieler den Gegner getötet hat. Ohne Ziel wird nichts gezählt. In Instanzen ist die Regel aus.
@@ -93,5 +93,6 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 - **Kein Kampflog:** Das Kampflog steht Addons in Forever nicht zur Verfügung. Elite-Kills funktionieren deshalb nur über dein aktuelles Ziel.
 - **Secret Values:** Im Kampf und in Instanzen können Namen, Klassen und andere Werte „secret“ sein. Das Addon überspringt sie dann und versucht es eine Sekunde später erneut. Ein Paladin, den du nur kurz im Kampf siehst, kann dadurch fehlen.
 - **Händler, Flugmeister und Schiffe** erkennt das Addon nur über gelernte Orte und Namenslisten. Ein Händler, dessen Fenster du nie geöffnet hast, ist dem Addon unbekannt.
+- **Flugzeit vorab:** Das Addon kennt eine Flugzeit erst, nachdem du die Strecke einmal geflogen bist.
 - **Karten-IDs und Zonennamen** von Forever sind nicht offiziell dokumentiert. Falls eine Stadt nicht erkannt wird, hilft `/gym city`.
 - Die Angaben zur Forever-API stammen aus Community-Quellen von der Beta. Blizzard kann Funktionen jederzeit ändern.

@@ -123,3 +123,14 @@ C_ChatInfo = {
   end,
   InChatMessagingLockdown = function() return Mock.lockdown end,
 }
+
+-- Taxi map
+Mock.taxiNodes = { { name = "Sturmwind", type = "CURRENT" }, { name = "Seenhain", type = "REACHABLE" } }
+function NumTaxiNodes() return #Mock.taxiNodes end
+function TaxiNodeGetType(i) return Mock.taxiNodes[i].type end
+function TaxiNodeName(i) return Mock.taxiNodes[i].name end
+function TakeTaxiNode(i) end
+function hooksecurefunc(name, fn)
+  local orig = _G[name]
+  _G[name] = function(...) local r = orig(...); fn(...); return r end
+end

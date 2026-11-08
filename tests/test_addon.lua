@@ -104,6 +104,30 @@ check("flight answer stored", GymChallengeCharDB.stats.flightsMade == 1 and task
 Mock.tick(20)
 check("landed display hides later", not GymChallengeFlightTimer:IsShown())
 
+-- Expected flight time: unknown first, learned, shown at the next take-off
+TakeTaxiNode(2)
+Mock.onTaxi = true; Mock.tick()
+check("first flight on route: unknown", GC.Events.ExpectedDuration() == nil
+  and GymChallengeFlightTimer.text:GetText():find("unbekannt") ~= nil)
+Mock.tick(119); Mock.onTaxi = false; Mock.tick()
+check("route time learned", GymChallengeDB.flightTimes["Sturmwind > Seenhain"] ~= nil
+  and math.abs(GymChallengeDB.flightTimes["Sturmwind > Seenhain"].t - 120) <= 2)
+for _, t in ipairs(GymChallengeCharDB.tasks) do if t.state == "landed" then GC.AnswerFlight(t.id, true) end end
+Mock.tick(20)
+TakeTaxiNode(2)
+Mock.onTaxi = true; Mock.tick()
+local learned = GymChallengeDB.flightTimes["Sturmwind > Seenhain"].t
+check("expected shown at take-off", GC.Events.ExpectedDuration() == learned
+  and GymChallengeFlightTimer.text:GetText():find(GC.FormatDuration(learned), 1, true) ~= nil)
+check("start alert has duration", Mock.lastPrint:find(GC.FormatDuration(learned), 1, true) ~= nil)
+Mock.tick(30)
+check("remaining time counts down", GymChallengeFlightTimer.text:GetText():find("noch " .. GC.FormatDuration(learned - 31), 1, true) ~= nil
+  or GymChallengeFlightTimer.text:GetText():find("noch " .. GC.FormatDuration(learned - 30), 1, true) ~= nil)
+Mock.onTaxi = false; Mock.tick()
+for _, t in ipairs(GymChallengeCharDB.tasks) do if t.state == "landed" then GC.AnswerFlight(t.id, true) end end
+check("shorter landing updates route time", GymChallengeDB.flightTimes["Sturmwind > Seenhain"].n == 2)
+Mock.tick(20)
+
 -- Dungeon leave
 Mock.instance = { true, "party" }
 Mock.fire("PLAYER_ENTERING_WORLD", false, false)

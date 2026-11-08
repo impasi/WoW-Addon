@@ -28,19 +28,69 @@ function Events.IsFlying()
   return GC.cdb and GC.cdb.flight ~= nil
 end
 
+-- The API has no "flight duration". The addon learns it: when you pick a
+-- destination (TakeTaxiNode), it remembers origin and destination, measures
+-- the flight and stores the time per route (account-wide). On the next flight
+-- on the same route the expected duration is shown right at take-off.
+local pendingRoute = nil -- { key, from, to, at }
+
+local function currentTaxiNodeName()
+  if not (NumTaxiNodes and TaxiNodeGetType and TaxiNodeName) then return nil end
+  local n = GC.SafeCall(NumTaxiNodes) or 0
+  for i = 1, n do
+    if GC.SafeCall(TaxiNodeGetType, i) == "CURRENT" then
+      return GC.SafeCall(TaxiNodeName, i)
+    end
+  end
+end
+
+function Events.OnTakeTaxiNode(slot)
+  local from = currentTaxiNodeName()
+  local to = TaxiNodeName and GC.SafeCall(TaxiNodeName, slot)
+  if from and to then
+    pendingRoute = { key = from .. " > " .. to, from = from, to = to, at = GetTime() }
+  else
+    pendingRoute = nil
+  end
+end
+if hooksecurefunc and TakeTaxiNode then
+  -- Secure post-hook: only observes the click, does not change or automate it.
+  hooksecurefunc("TakeTaxiNode", function(slot) Events.OnTakeTaxiNode(slot) end)
+end
+
+-- Expected duration in seconds for the current flight, or nil if unknown.
+function Events.ExpectedDuration()
+  local f = GC.cdb and GC.cdb.flight
+  if not f or not f.route then return nil end
+  local known = GC.db.flightTimes[f.route]
+  return known and known.t or nil
+end
+
 function Events.StartFlight(startTime, isTest)
   if GC.cdb.flight then return end
   local now = time()
   GC.cdb.flight = { start = startTime or now, lastSeen = now, test = isTest or nil }
+  if pendingRoute and GetTime() - pendingRoute.at < 30 then
+    GC.cdb.flight.route = pendingRoute.key
+    GC.cdb.flight.to = pendingRoute.to
+  end
+  pendingRoute = nil
   -- Leaving a crowded area by flight: show the collected paladins before the flight.
   GC.Areas.Update()
   local task = GC.AddTask("flight", 0, "r_flight", nil, { state = "running", start = GC.cdb.flight.start })
   GC.cdb.flight.taskId = task.id
-  GC.Alert(GC.L("alert_flight_start"), "flight")
+  local expected = Events.ExpectedDuration()
+  if expected then
+    GC.Alert(GC.L("alert_flight_start_known", GC.FormatDuration(expected)), "flight")
+  else
+    GC.Alert(GC.L("alert_flight_start"), "flight")
+  end
   if GC.UI and GC.UI.RefreshFlightTimer then GC.UI:RefreshFlightTimer() end
 end
 
-function Events.EndFlight(endTime)
+-- recovered = true when the landing was only noticed after a login/reload;
+-- such durations are not exact and are not learned.
+function Events.EndFlight(endTime, recovered)
   local f = GC.cdb.flight
   if not f then return end
   GC.cdb.flight = nil
@@ -51,6 +101,9 @@ function Events.EndFlight(endTime)
     task.amount = duration
   else
     GC.AddTask("flight", duration, "r_flight", nil, { state = "landed" })
+  end
+  if f.route and not recovered and not f.test and duration >= 5 then
+    GC.db.flightTimes[f.route] = { t = duration, n = ((GC.db.flightTimes[f.route] or {}).n or 0) + 1 }
   end
   GC.AddStat("plank", duration)
   GC.Alert(GC.L("alert_flight_end", GC.FormatDuration(duration)), "flight")
@@ -73,8 +126,9 @@ function Events.CheckTaxi()
     -- Normal landing: now. After a logout during a flight: last moment seen flying.
     local f = GC.cdb.flight
     local endTime = time()
-    if Events.loginCheckPending and f.lastSeen then endTime = f.lastSeen end
-    Events.EndFlight(endTime)
+    local recovered = Events.loginCheckPending
+    if recovered and f.lastSeen then endTime = f.lastSeen end
+    Events.EndFlight(endTime, recovered)
   end
   Events.loginCheckPending = false
 end

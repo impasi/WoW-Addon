@@ -15,6 +15,7 @@ local ACCOUNT_DEFAULTS = {
   spots = {},           -- learned crowded spots { x, y, instance }
   customCities = {},    -- zone names the player added as city
   leaderboard = {},     -- received stats, keyed by "Name-Realm"
+  flightTimes = {},     -- learned flight durations: ["From > To"] = { t = seconds, n = flights }
   window = nil,         -- saved window position
   rankWindow = nil,
 }

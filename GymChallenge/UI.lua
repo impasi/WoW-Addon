@@ -253,7 +253,14 @@ function UI:RefreshFlightTimer()
   local t = self.flightTimer
   if not t then return end
   if GC.Events and GC.Events.IsFlying() then
-    setTimerText(t, GC.L("flight_timer", GC.FormatDuration(time() - GC.cdb.flight.start)))
+    local elapsed = time() - GC.cdb.flight.start
+    local expected = GC.Events.ExpectedDuration()
+    if expected then
+      setTimerText(t, GC.L("flight_timer_known", GC.FormatDuration(expected),
+        GC.FormatDuration(math.max(0, expected - elapsed))))
+    else
+      setTimerText(t, GC.L("flight_timer_unknown", GC.FormatDuration(elapsed)))
+    end
     t:Show()
   elseif self.landedUntil and time() < self.landedUntil then
     setTimerText(t, "|cff33ff33" .. GC.L("flight_landed", GC.FormatDuration(self.landedDuration)) .. "|r")
@@ -267,7 +274,8 @@ function UI:RefreshStatus()
   local f = self.frame
   if not f then return end
   if GC.Events and GC.Events.IsFlying() then
-    f.status:SetText(GC.L("area_flying", GC.FormatDuration(time() - GC.cdb.flight.start)))
+    local expected = GC.Events.ExpectedDuration()
+    f.status:SetText(GC.L("area_flying", expected and GC.FormatDuration(expected) or GC.L("flight_unknown")))
   elseif GC.Areas.IsCrowded() then
     f.status:SetText(GC.L("area_crowded", GC.L(GC.Areas.reason or "reason_manual"), GC.cdb.crowded.count))
   else
