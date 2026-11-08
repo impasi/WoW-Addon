@@ -227,6 +227,7 @@ GymChallengeDB.leaderboard["Freund-Realm"] = { rev=1, updated=Mock.now, received
 GC.UI:RefreshRank()
 check("sort by pushups: friend first", rowName(1):find("Freund") ~= nil and rf.rows[1].cells.pushups.text == "999")
 check("flights column", rf.rows[1].cells.flights.text == "2/1")
+check("realm hidden in ranking", rowName(1):find("Realm") == nil)
 for _, c in ipairs({ "", "rank", "status", "test death", "test flightstart", "test flightend", "test paladin", "bogus" }) do
   local ok, err = pcall(SlashCmdList["GYMCHALLENGE"], c)
   check("slash '" .. c .. "' " .. tostring(err), ok)

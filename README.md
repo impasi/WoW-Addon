@@ -28,7 +28,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
   - Mit der Schaltfläche „Gebiet“ wechselst du zwischen Auto, immer Crowded und immer Uncrowded.
   - Verlässt du eine Crowded Area per Flug, kommt die Summe **vor** dem Flug. Während des Flugs gilt die Gegend als uncrowded.
 - **Flugzeit-Anzeige:** Während des Flugs läuft oben in der Bildschirmmitte eine große Anzeige mit der Flugzeit. Sie erscheint auch bei geschlossenem Fenster und lässt sich mit der Maus verschieben. Nach der Landung zeigt sie 15 Sekunden lang die gesamte Flugzeit.
-- **Fliegen:** Nach der Landung gilt die Übung als erledigt. Das Addon fragt dich dann „Geschafft / Nicht geschafft“ und speichert die Antwort in deiner Statistik.
+- **Fliegen:** Nach der Landung gilt die Übung als erledigt. Das Addon fragt dich dann „Plank geschafft? Ja / Nein“ und speichert die Antwort in deiner Statistik.
 - **Instanz verlassen:** Ein Login nach einem Disconnect zählt nicht. Das Verlassen als Geist zählt auch nicht.
 - **Elite:** Gezählt wird, wenn dein aktuelles Ziel ein Elite ist (auch Rar-Elite und Weltboss) und stirbt. Das zählt auch, wenn ein anderer Spieler den Gegner getötet hat. Ohne Ziel wird nichts gezählt. In Instanzen ist die Regel aus.
 
@@ -60,7 +60,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 - Wenn du einer Gruppe beitrittst, schicken sich alle Addon-Nutzer ihre Statistik. Ändert sich danach etwas, wird sie nach 5 Sekunden erneut gesendet.
 - Übertragen werden nur Zahlen: Revision, Zeitstempel, Squats, Liegestütze, Burpees, Sit-ups, Plank-Sekunden und Flug-Planks (geschafft / nicht geschafft). Eine Nachricht hat höchstens etwa 60 Byte, das Limit liegt bei 255.
 - **Keine Doppelzählung:** Jeder sendet seine eigene Gesamtsumme mit einer Revisionsnummer. Der Empfänger ersetzt den alten Eintrag, statt etwas zu addieren. Gleiche oder ältere Daten werden ignoriert.
-- Empfangene Werte werden lokal gespeichert, für den ganzen Account. Sie bleiben auch nach dem Verlassen der Gruppe sichtbar. Dein eigener Eintrag ist grün und mit „(du)“ markiert. Die Spalte „aktualisiert“ zeigt, wann der Spieler seine Werte zuletzt geändert hat.
+- Empfangene Werte werden lokal gespeichert, für den ganzen Account. Sie bleiben auch nach dem Verlassen der Gruppe sichtbar. Dein eigener Eintrag ist grün und mit „(du)“ markiert. Namen werden ohne Realm angezeigt. Die Spalte „aktualisiert“ zeigt, wann der Spieler seine Werte zuletzt geändert hat.
 - Die Rangliste hat eigene Spalten für Squats, Liegestütze, Burpees, Sit-ups, Plank (Zeit), Flug +/- (Flug-Planks geschafft/nicht geschafft) und Gesamt (Summe der Wiederholungen). Mit einem Klick auf einen Spaltenkopf sortierst du nach dieser Spalte.
 - Du kannst den Austausch abschalten und die Rangliste zurücksetzen.
 
