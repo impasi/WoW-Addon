@@ -1036,6 +1036,72 @@ local function unitText(key, cfg)
   return u
 end
 
+-- Simple own dropdown list (no dependency on the client's menu API).
+local dropdown
+local DD_ITEM_H = 20
+
+function UI:OpenDropdown(anchor, choices, current, onSelect)
+  if not dropdown then
+    dropdown = CreateFrame("Frame", "GymChallengeDropdown", UIParent, "BackdropTemplate")
+    styleBackdrop(dropdown, 0.98)
+    dropdown:SetFrameStrata("FULLSCREEN_DIALOG")
+    dropdown:EnableMouse(true)
+    dropdown:SetClampedToScreen(true)
+    dropdown.items = {}
+    -- Close when the mouse leaves the list for a moment.
+    dropdown:SetScript("OnUpdate", function(self, elapsed)
+      if self:IsMouseOver() or (self.anchor and self.anchor:IsMouseOver()) then
+        self.away = 0
+      else
+        self.away = (self.away or 0) + (elapsed or 0)
+        if self.away > 1.5 then self:Hide() end
+      end
+    end)
+  end
+  if dropdown:IsShown() and dropdown.anchor == anchor then
+    dropdown:Hide()
+    return
+  end
+  local width = math.max(160, (anchor.w or 150))
+  for i, choice in ipairs(choices) do
+    local item = dropdown.items[i]
+    if not item then
+      item = CreateFrame("Button", nil, dropdown)
+      item:SetHeight(DD_ITEM_H)
+      item:SetPoint("TOPLEFT", 6, -6 - (i - 1) * DD_ITEM_H)
+      item:SetPoint("RIGHT", dropdown, "RIGHT", -6, 0)
+      item.hl = item:CreateTexture(nil, "HIGHLIGHT")
+      item.hl:SetAllPoints()
+      item.hl:SetColorTexture(1, 1, 1, 0.12)
+      item.icon = item:CreateTexture(nil, "ARTWORK")
+      item.icon:SetSize(16, 16)
+      item.icon:SetPoint("LEFT", 2, 0)
+      if item.icon.SetTexCoord then item.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+      item.text = item:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+      item.text:SetPoint("LEFT", item.icon, "RIGHT", 6, 0)
+      oneLine(item.text, width - 40)
+      dropdown.items[i] = item
+    end
+    local style = KIND_STYLE[choice == "flightplank" and "flight" or choice]
+    item.icon:SetTexture(style and style.icon or nil)
+    local selected = choice == current
+    item.text:SetText((selected and "|cff33ff99" or "") .. GC.L("exn_" .. choice) .. (selected and "|r" or ""))
+    item:SetScript("OnClick", function()
+      dropdown:Hide()
+      onSelect(choice)
+    end)
+    item.choice = choice
+    item:Show()
+  end
+  for i = #choices + 1, #dropdown.items do dropdown.items[i]:Hide() end
+  dropdown:SetSize(width, #choices * DD_ITEM_H + 12)
+  dropdown:ClearAllPoints()
+  dropdown:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
+  dropdown.anchor = anchor
+  dropdown.away = 0
+  dropdown:Show()
+end
+
 function UI:InitOptions()
   local n = #GC.CHALLENGE_ORDER
   local f = makeWindow("GymChallengeOptionsFrame", OPT_W, 84 + n * OPT_ROW_H + 50, "optionsWindow")
@@ -1068,13 +1134,12 @@ function UI:InitOptions()
     r.label:SetPoint("LEFT", r.check, "RIGHT", 4, 0)
     oneLine(r.label, 210)
 
-    r.ex = makeButton(r, 150, function()
+    r.ex = makeButton(r, 150, function(self)
       local cfg = GC.Challenge(key)
-      local choices = GC.ExerciseChoices(key)
-      local idx = 1
-      for ci, c in ipairs(choices) do if c == cfg.ex then idx = ci end end
-      cfg.ex = choices[(idx % #choices) + 1]
-      UI:RefreshOptions()
+      UI:OpenDropdown(self, GC.ExerciseChoices(key), cfg.ex, function(choice)
+        cfg.ex = choice
+        UI:RefreshOptions()
+      end)
     end)
     r.ex.minW = 150
     r.ex:SetPoint("LEFT", 244, 0)
@@ -1120,7 +1185,7 @@ function UI:RefreshOptions()
     local cfg = GC.Challenge(r.key)
     r.check:SetChecked(cfg.enabled and true or false)
     r.label:SetText((cfg.enabled and "" or "|cff888888") .. GC.L("ch_" .. r.key) .. (cfg.enabled and "" or "|r"))
-    setButtonText(r.ex, GC.L("exn_" .. cfg.ex))
+    setButtonText(r.ex, GC.L("exn_" .. cfg.ex) .. "  v")
     local fixed = cfg.ex == "flightplank"
     for _, w in ipairs({ r.minus, r.plus }) do
       if fixed then w:Hide() else w:Show() end

@@ -20,7 +20,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 | Neuer Flugpunkt | 15 Squats | Systemmeldung `ERR_NEWTAXIPATH` |
 
 Das sind die Standardwerte. Unter **Optionen** (Button im Hauptfenster oder `/gym options`) kannst du jede Challenge ein- und ausschalten und Übung und Anzahl ändern:
-- Ein Klick auf den Übungs-Button wechselt die Übung. Mit **-** und **+** änderst du die Anzahl, mit Shift-Klick in 10er-Schritten.
+- Ein Klick auf den Übungs-Button öffnet ein Dropdown mit allen Übungen. Mit **-** und **+** änderst du die Anzahl, mit Shift-Klick in 10er-Schritten.
 - **Plank:** 1 Wiederholung = 1 Minute.
 - **Fliegen:** Standard ist „Plank ganzer Flug“. Wählst du eine andere Übung, gilt die Anzahl pro vollen 20 Sekunden Flugzeit. Ein Beispiel: 2 Squats bei 65 s Flug ergeben 6 Squats nach der Landung.
 - **Paladine:** Die Anzahl gilt pro gezähltem untoten Paladin.
