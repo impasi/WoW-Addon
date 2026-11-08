@@ -83,18 +83,26 @@ check("collected at flight master", GymChallengeCharDB.crowded.count == 1)
 Mock.onTaxi = true
 Mock.fire("PLAYER_CONTROL_LOST"); Mock.tick()
 check("flight started", GC.Events.IsFlying())
+Mock.tick(65)
+check("flight timer visible", GymChallengeFlightTimer:IsShown())
+check("flight timer shows time", GymChallengeFlightTimer.text:GetText():find("1:0%d") ~= nil)
+Mock.advance(-65) Mock.gettime = Mock.gettime
 check("summary before flight", select(2, tasksOf("pushups")) == 13)
 Mock.tick(90)
 Mock.onTaxi = false
 Mock.pos = { 5000, 5000 }
 Mock.fire("PLAYER_CONTROL_GAINED"); Mock.tick()
 check("flight ended", not GC.Events.IsFlying())
+check("landed time shown", GymChallengeFlightTimer:IsShown() and GymChallengeFlightTimer.text:GetText():find("Gelandet") ~= nil)
 local landed
 for _, t in ipairs(GymChallengeCharDB.tasks) do if t.kind == "flight" then landed = t end end
 check("flight duration measured ~91s", landed and landed.state == "landed" and landed.amount >= 90 and landed.amount <= 93)
 check("plank stat has flight time", GymChallengeCharDB.stats.plank == landed.amount)
 GC.AnswerFlight(landed.id, true)
 check("flight answer stored", GymChallengeCharDB.stats.flightsMade == 1 and tasksOf("flight") == 0)
+
+Mock.tick(20)
+check("landed display hides later", not GymChallengeFlightTimer:IsShown())
 
 -- Dungeon leave
 Mock.instance = { true, "party" }

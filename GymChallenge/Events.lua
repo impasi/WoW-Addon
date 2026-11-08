@@ -37,6 +37,7 @@ function Events.StartFlight(startTime, isTest)
   local task = GC.AddTask("flight", 0, "r_flight", nil, { state = "running", start = GC.cdb.flight.start })
   GC.cdb.flight.taskId = task.id
   GC.Alert(GC.L("alert_flight_start"), "flight")
+  if GC.UI and GC.UI.RefreshFlightTimer then GC.UI:RefreshFlightTimer() end
 end
 
 function Events.EndFlight(endTime)
@@ -53,6 +54,7 @@ function Events.EndFlight(endTime)
   end
   GC.AddStat("plank", duration)
   GC.Alert(GC.L("alert_flight_end", GC.FormatDuration(duration)), "flight")
+  if GC.UI and GC.UI.ShowLanded then GC.UI:ShowLanded(duration) end
   GC.Areas.Update()
   if GC.UI then GC.UI:Refresh() end
 end

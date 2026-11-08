@@ -166,7 +166,64 @@ function UI:Init()
   f.note:SetPoint("BOTTOM", 0, 8)
 
   GC.OnTick(function() if f:IsShown() then UI:Refresh() end end)
+  self:InitFlightTimer()
   self:Refresh()
+end
+
+-------------------------------------------------------------------------------
+-- Large flight timer: visible during the whole flight (even when the main
+-- window is closed) and for a few seconds after landing.
+-------------------------------------------------------------------------------
+local LANDED_SHOW_SECONDS = 15
+
+function UI:InitFlightTimer()
+  local t = CreateFrame("Frame", "GymChallengeFlightTimer", UIParent, "BackdropTemplate")
+  t:SetSize(320, 44)
+  t:SetBackdrop(BACKDROP)
+  t:SetBackdropColor(0, 0, 0, 0.75)
+  t:SetFrameStrata("HIGH")
+  t:SetClampedToScreen(true)
+  t:EnableMouse(true)
+  t:SetMovable(true)
+  t:RegisterForDrag("LeftButton")
+  t:SetScript("OnDragStart", t.StartMoving)
+  t:SetScript("OnDragStop", function(self)
+    self:StopMovingOrSizing()
+    local point, _, relPoint, x, y = self:GetPoint()
+    GC.db.flightTimerPos = { point = point, relPoint = relPoint, x = x, y = y }
+  end)
+  local pos = GC.db.flightTimerPos
+  if pos then
+    t:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+  else
+    t:SetPoint("TOP", UIParent, "TOP", 0, -140)
+  end
+  t.text = t:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  t.text:SetPoint("CENTER")
+  t:Hide()
+  self.flightTimer = t
+  GC.OnTick(function() UI:RefreshFlightTimer() end)
+end
+
+-- Called by Events.EndFlight with the measured duration.
+function UI:ShowLanded(duration)
+  self.landedDuration = duration
+  self.landedUntil = time() + LANDED_SHOW_SECONDS
+  self:RefreshFlightTimer()
+end
+
+function UI:RefreshFlightTimer()
+  local t = self.flightTimer
+  if not t then return end
+  if GC.Events and GC.Events.IsFlying() then
+    t.text:SetText(GC.L("flight_timer", GC.FormatDuration(time() - GC.cdb.flight.start)))
+    t:Show()
+  elseif self.landedUntil and time() < self.landedUntil then
+    t.text:SetText("|cff33ff33" .. GC.L("flight_landed", GC.FormatDuration(self.landedDuration)) .. "|r")
+    t:Show()
+  else
+    t:Hide()
+  end
 end
 
 function UI:RefreshStatus()
