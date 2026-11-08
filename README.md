@@ -41,11 +41,14 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 - **Verlauf** zeigt alle zugewiesenen Übungen mit Zeit, Grund und Status (offen, erledigt, entfernt, gelandet, geschafft, nicht geschafft), die neuesten zuerst. Mit dem Mausrad blätterst du. Mit **X** löschst du ein einzelnes Ereignis, nach einer Rückfrage. Das Ereignis verschwindet dann auch aus deiner Statistik und aus der Rangliste deiner Gruppe. Gespeichert werden die letzten 500 Einträge.
 - Die offene Liste und die gesammelten Paladine einer Crowded Area bleiben über `/reload` und Neustart erhalten.
 
+- **Minimap-Button:** Linksklick öffnet die Übungen, Rechtsklick die Rangliste und Shift+Linksklick den Verlauf. Den Button kannst du um die Minimap ziehen. Mit `/gym minimap` blendest du ihn ein oder aus. Hat ein anderes Addon LibDBIcon geladen (das tun die meisten Minimap-Sammler), meldet sich der Button dort an, sodass Sammler wie Good Addons ihn gruppieren können. Sonst erstellt das Addon einen eigenen Button direkt an der Minimap.
+
 ### Befehle
 ```
 /gym                    Fenster an/aus
 /gym rank               Gruppen-Rangliste
 /gym history            Verlauf deiner Übungen
+/gym minimap            Minimap-Button ein/aus
 /gym lang de|en         Sprache
 /gym sound              Sound an/aus
 /gym crowded auto|on|off

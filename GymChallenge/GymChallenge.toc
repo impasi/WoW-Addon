@@ -4,6 +4,8 @@
 ## Notes-deDE: Weist Übungen für Spielereignisse zu (Tode, Level-ups, Flüge, Paladine, ...). Zugewiesene Übungen werden nicht überprüft.
 ## Author: impasi
 ## Version: 1.0.0
+## IconTexture: Interface\Icons\Spell_Nature_Strength
+## AddonCompartmentFunc: GymChallenge_OnAddonCompartmentClick
 ## SavedVariables: GymChallengeDB
 ## SavedVariablesPerCharacter: GymChallengeCharDB
 
@@ -14,3 +16,4 @@ Paladins.lua
 Events.lua
 Comm.lua
 UI.lua
+Minimap.lua

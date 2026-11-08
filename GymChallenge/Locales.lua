@@ -124,8 +124,10 @@ local strings = {
     ago_day = "vor %d Tg.",
     comm_blocked = "Austausch in Instanzen nicht möglich - wird danach gesendet.",
 
-    help = "Befehle: /gym (Fenster), /gym rank, /gym history, /gym lang de|en, /gym sound, /gym crowded auto|on|off, /gym spot, /gym city, /gym comm on|off, /gym resetrank, /gym resetstats, /gym status, /gym test <death|level|flightstart|flightend|dungeon|elite|taxinode|paladin>",
+    help = "Befehle: /gym (Fenster), /gym rank, /gym history, /gym minimap, /gym lang de|en, /gym sound, /gym crowded auto|on|off, /gym spot, /gym city, /gym comm on|off, /gym resetrank, /gym resetstats, /gym status, /gym test <death|level|flightstart|flightend|dungeon|elite|taxinode|paladin>",
     lang_set = "Sprache: Deutsch",
+    minimap_hint = "Linksklick: Übungen, Rechtsklick: Rangliste, Shift+Linksklick: Verlauf",
+    minimap_set = "Minimap-Button: %s",
     sound_set = "Sound: %s",
     on = "an",
     off = "aus",
@@ -253,8 +255,10 @@ local strings = {
     ago_day = "%d d ago",
     comm_blocked = "Sharing is not possible inside instances - will be sent afterwards.",
 
-    help = "Commands: /gym (window), /gym rank, /gym history, /gym lang de|en, /gym sound, /gym crowded auto|on|off, /gym spot, /gym city, /gym comm on|off, /gym resetrank, /gym resetstats, /gym status, /gym test <death|level|flightstart|flightend|dungeon|elite|taxinode|paladin>",
+    help = "Commands: /gym (window), /gym rank, /gym history, /gym minimap, /gym lang de|en, /gym sound, /gym crowded auto|on|off, /gym spot, /gym city, /gym comm on|off, /gym resetrank, /gym resetstats, /gym status, /gym test <death|level|flightstart|flightend|dungeon|elite|taxinode|paladin>",
     lang_set = "Language: English",
+    minimap_hint = "Left click: exercises, right click: ranking, shift+left click: history",
+    minimap_set = "Minimap button: %s",
     sound_set = "Sound: %s",
     on = "on",
     off = "off",

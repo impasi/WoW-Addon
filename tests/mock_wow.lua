@@ -45,8 +45,8 @@ function CreateFrame(kind, name, parent, template)
   function f:SetSize(w, h) self.w, self.h = w, h; if self.scripts.OnSizeChanged then self.scripts.OnSizeChanged(self) end end
   function f:SetWidth(w) self.w = w end
   function f:SetHeight(h) self.h = h end
-  function f:GetWidth() return self.w end
-  function f:GetHeight() return self.h end
+  function f:GetWidth() return rawget(self, "w") end
+  function f:GetHeight() return rawget(self, "h") end
   setmetatable(f, widgetMT)
   table.insert(Mock.frames, f)
   if name then _G[name] = f end
@@ -140,3 +140,7 @@ function hooksecurefunc(name, fn)
   _G[name] = function(...) local r = orig(...); fn(...); return r end
 end
 date = os.date
+
+Minimap = CreateFrame("Frame", "Minimap")
+GameTooltip = setmetatable({}, { __index = function() return function() end end })
+function IsShiftKeyDown() return false end

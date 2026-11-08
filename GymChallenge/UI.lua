@@ -930,6 +930,8 @@ SlashCmdList["GYMCHALLENGE"] = function(input)
     UI:ToggleRank()
   elseif cmd == "history" then
     UI:ToggleHistory()
+  elseif cmd == "minimap" then
+    GC.Minimap:Toggle()
   elseif cmd == "lang" and (arg == "de" or arg == "en") then
     GC.db.lang = arg
     GC.Print(GC.L("lang_set"))

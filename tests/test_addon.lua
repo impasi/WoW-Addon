@@ -1,6 +1,6 @@
 -- Logic tests for GymChallenge against the mock API. Run: python3 tests/run_tests.py
 local GC = {}
-local files = { "Locales.lua", "Core.lua", "Areas.lua", "Paladins.lua", "Events.lua", "Comm.lua", "UI.lua" }
+local files = { "Locales.lua", "Core.lua", "Areas.lua", "Paladins.lua", "Events.lua", "Comm.lua", "UI.lua", "Minimap.lua" }
 for _, f in ipairs(files) do
   local chunk = assert(loadfile(ADDON_DIR .. "/" .. f))
   chunk("GymChallenge", GC)
@@ -20,8 +20,27 @@ end
 
 GC.debug = true
 Mock.fire("ADDON_LOADED", "GymChallenge")
+Mock.fire("PLAYER_LOGIN")
 Mock.fire("PLAYER_ENTERING_WORLD", true, false)
 Mock.tick()
+check("own minimap button created", GymChallengeMinimapButton ~= nil and GymChallengeMinimapButton.shown)
+GymChallengeMinimapButton.scripts.OnClick(GymChallengeMinimapButton, "LeftButton")
+check("minimap left click toggles window", GymChallengeFrame.shown == false)
+GymChallengeMinimapButton.scripts.OnClick(GymChallengeMinimapButton, "LeftButton")
+SlashCmdList["GYMCHALLENGE"]("minimap")
+check("minimap hide", not GymChallengeMinimapButton.shown and GymChallengeDB.minimap.hide)
+SlashCmdList["GYMCHALLENGE"]("minimap")
+check("minimap show", GymChallengeMinimapButton.shown)
+-- LibDBIcon path (simulated libraries loaded by another addon)
+local registered
+LibStub = function(name) 
+  if name == "LibDataBroker-1.1" then return { NewDataObject = function(_, n, o) return o end } end
+  if name == "LibDBIcon-1.0" then return { Register = function(_, n, o, db) registered = { n = n, o = o, db = db } end, Show = function() end, Hide = function() end } end
+end
+GC.Minimap:Init()
+check("registers with LibDBIcon when present", registered and registered.n == "GymChallenge" and registered.db == GymChallengeDB.minimap)
+LibStub = nil
+check("compartment func exists", type(GymChallenge_OnAddonCompartmentClick) == "function")
 
 -- Death / level / taxi node
 Mock.fire("PLAYER_DEAD")
