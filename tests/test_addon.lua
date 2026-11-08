@@ -78,10 +78,21 @@ Mock.units.nameplate5 = { name = "Krieger", class = "WARRIOR", player = true }
 Mock.tick(3)
 check("crowded collects 2", GymChallengeCharDB.crowded.count == 2)
 check("no push-ups yet in crowded", select(2, tasksOf("pushups")) == 10)
+GC.UI:RefreshStatus()
+check("do-now button shown with count", GymChallengeFrame.doNow.shown and GymChallengeFrame.doNow.text:find("2") ~= nil)
+GymChallengeFrame.doNow.scripts.OnClick()
+check("do-now adds push-ups early", select(2, tasksOf("pushups")) == 12 and GymChallengeCharDB.crowded.count == 0)
+check("do-now button hidden after", not GymChallengeFrame.doNow.shown)
+Mock.units.nameplate3, Mock.units.nameplate4 = nil, nil
+Mock.units.nameplate8 = { name = "PalaD", class = "PALADIN", player = true }
+Mock.units.nameplate9b = { name = "PalaE", class = "PALADIN", player = true }
+Mock.tick(2)
+Mock.units.nameplate8, Mock.units.nameplate9b = nil, nil
+check("collecting continues after do-now", GymChallengeCharDB.crowded.count == 2)
 Mock.units.nameplate3, Mock.units.nameplate4, Mock.units.nameplate5 = nil, nil, nil
 Mock.zone = "Wald von Elwynn"; Mock.mapID = 37
 Mock.tick()
-check("leaving crowded -> 2 push-ups", select(2, tasksOf("pushups")) == 12)
+check("leaving crowded -> rest 2 push-ups", select(2, tasksOf("pushups")) == 14)
 check("crowded counter reset", GymChallengeCharDB.crowded.count == 0)
 
 -- Learned vendor spot
@@ -134,7 +145,7 @@ Mock.tick(65)
 check("flight timer visible", GymChallengeFlightTimer:IsShown())
 check("flight timer shows time", GymChallengeFlightTimer.text:GetText():find("1:0%d") ~= nil)
 Mock.advance(-65) Mock.gettime = Mock.gettime
-check("summary before flight", select(2, tasksOf("pushups")) == 13)
+check("summary before flight", select(2, tasksOf("pushups")) == 15)
 Mock.tick(90)
 Mock.onTaxi = false
 Mock.pos = { 5000, 5000 }

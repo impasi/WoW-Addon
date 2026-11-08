@@ -288,6 +288,7 @@ local function placeMain(f)
   end
   local statusY = 32 + #top * BTN_LINE + 2
   f.statusDot:ClearAllPoints(); f.statusDot:SetPoint("TOPLEFT", 10, -statusY - 1)
+  f.doNow:ClearAllPoints(); f.doNow:SetPoint("TOPRIGHT", -8, -statusY + 4)
   f.status:ClearAllPoints(); f.status:SetPoint("TOPLEFT", 22, -statusY)
   f.warn:ClearAllPoints();   f.warn:SetPoint("TOPLEFT", 10, -statusY - 14)
   f.count:ClearAllPoints();  f.count:SetPoint("TOPLEFT", 10, -statusY - 30)
@@ -343,6 +344,13 @@ function UI:Init()
   f.mode = makeButton(f, 110, function() GC.Areas.CycleMode() end)
   f.mode:SetPoint("LEFT", f.sound, "RIGHT", 4, 0)
 
+  -- "Do now": take the collected crowded-area push-ups before leaving the area.
+  f.doNow = makeButton(f, 60, function()
+    GC.Paladins.FlushCrowded(true)
+    UI:Refresh()
+  end)
+  f.doNow:SetHeight(18)
+  f.doNow:Hide()
   f.statusDot = f:CreateTexture(nil, "OVERLAY")
   f.statusDot:SetSize(8, 8)
   f.statusDot:SetTexture(WHITE)
@@ -511,18 +519,29 @@ end
 function UI:RefreshStatus()
   local f = self.frame
   if not f then return end
+  local showDoNow = false
   if GC.Events and GC.Events.IsFlying() then
     local expected = GC.Events.ExpectedDuration()
     f.status:SetText(GC.L("area_flying", expected and GC.FormatDuration(expected) or GC.L("flight_unknown")))
     f.statusDot:SetVertexColor(0.40, 0.75, 0.95)
   elseif GC.Areas.IsCrowded() then
     f.status:SetText(GC.L("area_crowded", GC.L(GC.Areas.reason or "reason_manual"), GC.cdb.crowded.count))
+    showDoNow = (GC.cdb.crowded.count or 0) > 0
     f.statusDot:SetVertexColor(1.00, 0.60, 0.15)
   else
     f.status:SetText(GC.L("area_uncrowded"))
     f.statusDot:SetVertexColor(0.30, 0.85, 0.45)
   end
   f.warn:SetText(GC.Paladins.NameplatesEnabled() and "" or GC.L("warn_nameplates"))
+  local W = frameW(f, WIN_W)
+  if showDoNow then
+    setButtonText(f.doNow, GC.L("btn_do_now", GC.cdb.crowded.count))
+    f.doNow:Show()
+    f.status:SetWidth(W - 32 - f.doNow.w - 6)
+  else
+    f.doNow:Hide()
+    f.status:SetWidth(W - 32)
+  end
 end
 
 local function configureRow(r, task, rowW)

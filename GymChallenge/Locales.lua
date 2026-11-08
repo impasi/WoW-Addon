@@ -71,6 +71,8 @@ local strings = {
 
     alert_new = "Neue Übung: %s (%s)",
     alert_crowded_summary = "Crowded Area verlassen: %d Paladin(e) = %d Liegestütze",
+    alert_crowded_early = "Gesammelte Paladine übernommen: %d Paladin(e) = %d Liegestütze",
+    btn_do_now = "Jetzt machen (%d)",
     alert_flight_start = "Flug gestartet - Plank bis zur Landung! Flugzeit noch unbekannt.",
     alert_flight_start_known = "Flug gestartet - Flugzeit %s. Plank bis zur Landung!",
     alert_flight_end = "Gelandet nach %s. Hast du es geschafft?",
@@ -202,6 +204,8 @@ local strings = {
 
     alert_new = "New exercise: %s (%s)",
     alert_crowded_summary = "Left crowded area: %d paladin(s) = %d push-ups",
+    alert_crowded_early = "Collected paladins taken over: %d paladin(s) = %d push-ups",
+    btn_do_now = "Do now (%d)",
     alert_flight_start = "Flight started - plank until you land! Flight time not known yet.",
     alert_flight_start_known = "Flight started - flight time %s. Plank until you land!",
     alert_flight_end = "Landed after %s. Did you make it?",

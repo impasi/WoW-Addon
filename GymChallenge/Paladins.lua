@@ -58,12 +58,14 @@ function Paladins.CheckUnit(unit)
 end
 
 -- Called when leaving a crowded area (also right before a flight starts).
-function Paladins.FlushCrowded()
+-- early = true: the player pressed "do now" while still in the crowded area.
+-- Paladins seen afterwards are collected again and shown when leaving.
+function Paladins.FlushCrowded(early)
   local c = GC.cdb.crowded
   local n = c.count or 0
   if n > 0 then
     GC.AddTask("pushups", n * 1, "r_paladin_crowded", n, { silent = true })
-    GC.Alert(GC.L("alert_crowded_summary", n, n * 1))
+    GC.Alert(GC.L(early and "alert_crowded_early" or "alert_crowded_summary", n, n * 1))
   end
   c.count = 0
   c.names = {}
