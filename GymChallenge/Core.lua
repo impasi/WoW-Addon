@@ -22,6 +22,7 @@ local ACCOUNT_DEFAULTS = {
 
 local CHAR_DEFAULTS = {
   tasks = {},
+  history = {},     -- every assigned exercise (newest last), see GC.AddHistory
   nextId = 1,
   stats = { squats = 0, pushups = 0, burpees = 0, situps = 0, plank = 0,
             flightsMade = 0, flightsFailed = 0 },
@@ -141,6 +142,55 @@ function GC.AddStat(kind, amount)
   GC.BumpStats()
 end
 
+-------------------------------------------------------------------------------
+-- History: one entry per assigned exercise. Entries share the id of their task.
+-- status: open | done | cleared | landed | made | failed
+-------------------------------------------------------------------------------
+local HISTORY_MAX = 500
+
+function GC.AddHistory(task, status)
+  local h = GC.cdb.history
+  table.insert(h, {
+    id = task.id, t = task.created or time(), kind = task.kind, amount = task.amount,
+    reason = task.reason, reasonArg = task.reasonArg, status = status or "open",
+  })
+  while #h > HISTORY_MAX do table.remove(h, 1) end -- oldest entries drop out; stats stay
+  if GC.UI and GC.UI.RefreshHistory then GC.UI:RefreshHistory() end
+end
+
+function GC.FindHistory(id)
+  for i, e in ipairs(GC.cdb.history) do
+    if e.id == id then return e, i end
+  end
+end
+
+function GC.SetHistoryStatus(id, status)
+  local e = GC.FindHistory(id)
+  if e then e.status = status end
+  if GC.UI and GC.UI.RefreshHistory then GC.UI:RefreshHistory() end
+end
+
+-- Deletes one event: removes it from the history, from the open list and
+-- subtracts it from the own statistics (which are shared with the ranking).
+function GC.DeleteHistory(id)
+  local e, i = GC.FindHistory(id)
+  if not e then return end
+  local st = GC.cdb.stats
+  local function sub(key, n) st[key] = math.max(0, (st[key] or 0) - (n or 0)) end
+  if e.kind == "flight" then
+    sub("plank", e.amount)
+    if e.status == "made" then sub("flightsMade", 1) end
+    if e.status == "failed" then sub("flightsFailed", 1) end
+  else
+    sub(e.kind, e.amount)
+  end
+  table.remove(GC.cdb.history, i)
+  local _, ti = GC.FindTask(id)
+  if ti then table.remove(GC.cdb.tasks, ti) end
+  GC.BumpStats()
+  if GC.UI then GC.UI:Refresh(); GC.UI:RefreshHistory(); GC.UI:RefreshRank() end
+end
+
 -- Adds a task to the open list. kind: one of GC.KINDS or "flight".
 -- Statistics count what the addon assigned, not what was performed.
 function GC.AddTask(kind, amount, reason, reasonArg, opts)
@@ -160,6 +210,7 @@ function GC.AddTask(kind, amount, reason, reasonArg, opts)
 
   if kind ~= "flight" then
     GC.AddStat(kind, amount)
+    GC.AddHistory(task, "open")
     if not (opts and opts.silent) then
       GC.Alert(GC.L("alert_new", GC.TaskText(task), GC.ReasonText(task)))
     end
@@ -178,6 +229,7 @@ end
 function GC.CompleteTask(id)
   local _, i = GC.FindTask(id)
   if i then table.remove(GC.cdb.tasks, i) end
+  GC.SetHistoryStatus(id, "done")
   if GC.UI then GC.UI:Refresh() end
 end
 
@@ -191,6 +243,7 @@ function GC.AnswerFlight(id, made)
     GC.cdb.stats.flightsFailed = GC.cdb.stats.flightsFailed + 1
   end
   GC.BumpStats()
+  GC.SetHistoryStatus(id, made and "made" or "failed")
   table.remove(GC.cdb.tasks, i)
   if GC.UI then GC.UI:Refresh() end
 end
@@ -208,7 +261,12 @@ end
 function GC.ClearTasks()
   local keep = {}
   for _, t in ipairs(GC.cdb.tasks) do
-    if t.kind == "flight" and t.state == "running" then table.insert(keep, t) end
+    if t.kind == "flight" and t.state == "running" then
+      table.insert(keep, t)
+    else
+      local e = GC.FindHistory(t.id)
+      if e and (e.status == "open" or e.status == "landed") then e.status = "cleared" end
+    end
   end
   GC.cdb.tasks = keep
   if GC.UI then GC.UI:Refresh() end

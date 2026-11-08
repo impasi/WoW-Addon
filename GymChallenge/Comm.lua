@@ -117,6 +117,17 @@ function Comm:Hello()
   Comm:Broadcast(true)
 end
 
+-- "Load stats" button: ask all addon users in the group for their stats now.
+-- Returns false, reasonKey if not possible.
+function Comm:RequestStats()
+  if not GC.db.comm then return false, "rank_comm_off" end
+  if not (IsInGroup and IsInGroup()) then return false, "load_no_group" end
+  Comm.OnRosterUpdate()
+  Comm:Hello()
+  if blocked() then return true, "comm_blocked" end
+  return true, "load_requested"
+end
+
 function Comm:ScheduleBroadcast()
   broadcastDue = GetTime() + BROADCAST_DELAY
 end

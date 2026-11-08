@@ -134,3 +134,4 @@ function hooksecurefunc(name, fn)
   local orig = _G[name]
   _G[name] = function(...) local r = orig(...); fn(...); return r end
 end
+date = os.date

@@ -100,8 +100,9 @@ function Events.EndFlight(endTime, recovered)
     task.state = "landed"   -- counts as done; the player answers "made it?"
     task.amount = duration
   else
-    GC.AddTask("flight", duration, "r_flight", nil, { state = "landed" })
+    task = GC.AddTask("flight", duration, "r_flight", nil, { state = "landed" })
   end
+  GC.AddHistory(task, "landed")
   if f.route and not recovered and not f.test and duration >= 5 then
     GC.db.flightTimes[f.route] = { t = duration, n = ((GC.db.flightTimes[f.route] or {}).n or 0) + 1 }
   end

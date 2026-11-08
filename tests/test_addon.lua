@@ -257,6 +257,59 @@ for _, c in ipairs({ "", "rank", "status", "test death", "test flightstart", "te
   check("slash '" .. c .. "' " .. tostring(err), ok)
 end
 
+-- History + delete
+GymChallengeDB.lang = "de"
+local histBefore = #GymChallengeCharDB.history
+check("history has entries", histBefore > 10)
+local sq0 = GymChallengeCharDB.stats.squats
+local e = GC.AddTask("squats", 15, "r_taxinode")
+check("history entry added", #GymChallengeCharDB.history == histBefore + 1 and GymChallengeCharDB.history[#GymChallengeCharDB.history].status == "open")
+GC.UI:ToggleHistory()
+check("history window shows newest first", GymChallengeHistoryFrame.rows[1].entry.id == e.id)
+check("history row text", GymChallengeHistoryFrame.rows[1].cells.ex.text == "15 Squats")
+GC.DeleteHistory(e.id)
+check("delete subtracts stats", GymChallengeCharDB.stats.squats == sq0)
+check("delete removes open task", GC.FindTask(e.id) == nil)
+check("delete removes history", GC.FindHistory(e.id) == nil)
+local d = GC.AddTask("burpees", 5, "r_level", 14)
+GC.CompleteTask(d.id)
+check("done status in history", GC.FindHistory(d.id).status == "done")
+-- flight entry: delete subtracts plank + made
+GC.Events.StartFlight(nil, true); Mock.tick(40); GC.Events.EndFlight()
+local fl
+for _, t in ipairs(GymChallengeCharDB.tasks) do if t.state == "landed" then fl = t end end
+local pl0, fm0 = GymChallengeCharDB.stats.plank, GymChallengeCharDB.stats.flightsMade
+GC.AnswerFlight(fl.id, true)
+check("flight made in history", GC.FindHistory(fl.id).status == "made")
+GC.DeleteHistory(fl.id)
+check("flight delete subtracts", GymChallengeCharDB.stats.plank == pl0 - fl.amount and GymChallengeCharDB.stats.flightsMade == fm0)
+local c1 = GC.AddTask("situps", 20, "r_dungeon")
+GC.ClearTasks()
+check("cleared status", GC.FindHistory(c1.id).status == "cleared")
+local rev0 = GymChallengeCharDB.rev
+GC.DeleteHistory(c1.id)
+check("delete bumps revision for ranking", GymChallengeCharDB.rev > rev0)
+-- delete via button + confirm
+local x = GC.AddTask("squats", 10, "r_death")
+GC.UI:RefreshHistory()
+GymChallengeHistoryFrame.rows[1].del.scripts.OnClick()
+GymChallengeConfirm.ok.scripts.OnClick()
+check("delete via button", GC.FindHistory(x.id) == nil)
+
+-- Load stats button
+GC.Comm:SetEnabled(true)
+Mock.inGroup = true
+Mock.sent = {}
+GymChallengeRankFrame.load.scripts.OnClick()
+Mock.tick(3)
+local hello = false
+for _, m in ipairs(Mock.sent) do if m.text == "H1" then hello = true end end
+check("load stats sends request", hello)
+Mock.inGroup = false
+GymChallengeRankFrame.load.scripts.OnClick()
+check("load stats without group explains", Mock.lastPrint:find("Gruppe") ~= nil)
+check("slash history", pcall(SlashCmdList["GYMCHALLENGE"], "history"))
+
 -- Secret values are skipped without errors
 issecretvalue = function(v) return v == "SECRET" end
 Mock.units.nameplate9 = { name = "SECRET", class = "PALADIN", player = true }

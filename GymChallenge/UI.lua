@@ -6,7 +6,7 @@ GC.UI = UI
 local ROWS = 7
 local ROW_H = 36
 local RANK_ROWS = 10
-local WIN_W = 340
+local WIN_W = 380
 
 local BACKDROP = {
   bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -189,7 +189,9 @@ function UI:Init()
       GC.Print(GC.L("spot_failed"))
     end
   end)
-  f.spot:SetPoint("LEFT", f.rank, "RIGHT", 4, 0)
+  f.history = makeButton(f, 60, function() UI:ToggleHistory() end)
+  f.history:SetPoint("LEFT", f.rank, "RIGHT", 4, 0)
+  f.spot:SetPoint("LEFT", f.history, "RIGHT", 4, 0)
 
   f.note = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   f.note:SetPoint("BOTTOMLEFT", 10, 8)
@@ -334,6 +336,7 @@ function UI:Refresh()
   setButtonText(f.mode, GC.L("crowded_mode_" .. (GC.db.crowdedMode or "auto")))
   setButtonText(f.clear, GC.L("btn_clear"))
   setButtonText(f.rank, GC.L("btn_rank"))
+  setButtonText(f.history, GC.L("btn_history"))
   setButtonText(f.spot, GC.L("btn_spot"))
   f.note:SetText(GC.L("assigned_note"))
 
@@ -452,6 +455,11 @@ function UI:InitRank()
     UI:Confirm(GC.L("confirm_reset_rank"), function() GC.Comm:ResetLeaderboard() end)
   end)
   f.reset:SetPoint("BOTTOMRIGHT", -8, 10)
+  f.load = makeButton(f, 90, function()
+    local _, key = GC.Comm:RequestStats()
+    GC.Print(GC.L(key))
+  end)
+  f.load:SetPoint("LEFT", f.comm, "RIGHT", 6, 0)
   f:Hide()
 end
 
@@ -468,6 +476,7 @@ function UI:RefreshRank()
   end
   setButtonText(f.comm, GC.db.comm and GC.L("rank_comm_on") or GC.L("rank_comm_off"))
   setButtonText(f.reset, GC.L("rank_reset"))
+  setButtonText(f.load, GC.L("btn_load"))
 
   local own = {}
   for k, v in pairs(GC.cdb.stats) do own[k] = v end
@@ -525,6 +534,129 @@ end
 GC.OnTick(function() UI:RefreshRank() end)
 
 -------------------------------------------------------------------------------
+-- History window: all assigned exercises, newest first, each deletable.
+-------------------------------------------------------------------------------
+local HIST_ROWS = 14
+local HIST_COLUMNS = {
+  { key = "time",   head = "hist_col_time",   w = 90 },
+  { key = "ex",     head = "hist_col_ex",     w = 140 },
+  { key = "reason", head = "hist_col_reason", w = 170 },
+  { key = "status", head = "hist_col_status", w = 100 },
+}
+local HIST_WIDTH = 16 + 30
+for _, c in ipairs(HIST_COLUMNS) do HIST_WIDTH = HIST_WIDTH + c.w end
+
+local STATUS_COLOR = { open = "|cffffd100", done = "|cff33ff33", made = "|cff33ff33",
+  failed = "|cffff5555", cleared = "|cff999999", landed = "|cffffd100" }
+
+local function historyExerciseText(e)
+  if e.kind == "flight" then return GC.L("ex_flight_done", GC.FormatDuration(e.amount)) end
+  return GC.L("ex_" .. e.kind, e.amount)
+end
+
+function UI:InitHistory()
+  local f = makeWindow("GymChallengeHistoryFrame", HIST_WIDTH, 92 + HIST_ROWS * 18 + 20, "historyWindow")
+  self.historyFrame = f
+  f.note = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  f.note:SetPoint("TOPLEFT", 10, -30)
+  oneLine(f.note, HIST_WIDTH - 20)
+
+  local x = 10
+  f.headers = {}
+  for _, c in ipairs(HIST_COLUMNS) do
+    local h = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    h:SetPoint("TOPLEFT", x, -50)
+    oneLine(h, c.w - 4)
+    h.key = c.head
+    c.x = x
+    x = x + c.w
+    table.insert(f.headers, h)
+  end
+
+  f.offset = 0
+  f.rows = {}
+  for i = 1, HIST_ROWS do
+    local r = CreateFrame("Frame", nil, f)
+    r:SetSize(HIST_WIDTH - 16, 18)
+    r:SetPoint("TOPLEFT", 8, -66 - (i - 1) * 18)
+    r.bg = r:CreateTexture(nil, "BACKGROUND")
+    r.bg:SetAllPoints()
+    r.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.03 or 0.07)
+    r.cells = {}
+    for _, c in ipairs(HIST_COLUMNS) do
+      local fs = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      fs:SetPoint("LEFT", c.x - 8, 0)
+      oneLine(fs, c.w - 6)
+      r.cells[c.key] = fs
+    end
+    r.del = makeButton(r, 26, function()
+      local e = r.entry
+      if not e then return end
+      UI:Confirm(GC.L("hist_confirm_delete", historyExerciseText(e), GC.ReasonText(e)),
+        function() GC.DeleteHistory(e.id) end)
+    end)
+    r.del:SetHeight(18)
+    r.del:SetPoint("RIGHT", -2, 0)
+    f.rows[i] = r
+  end
+  f:EnableMouseWheel(true)
+  f:SetScript("OnMouseWheel", function(_, delta)
+    local max = math.max(0, #GC.cdb.history - HIST_ROWS)
+    f.offset = math.min(max, math.max(0, f.offset - delta))
+    UI:RefreshHistory()
+  end)
+
+  f.empty = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  f.empty:SetPoint("TOPLEFT", 10, -70)
+  oneLine(f.empty, HIST_WIDTH - 20)
+  f.pos = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  f.pos:SetPoint("BOTTOMRIGHT", -12, 10)
+  f:Hide()
+end
+
+function UI:RefreshHistory()
+  local f = self.historyFrame
+  if not f or not f:IsShown() then return end
+  f.title:SetText(GC.L("hist_title"))
+  f.note:SetText(GC.L("hist_note"))
+  for _, h in ipairs(f.headers) do h:SetText(GC.L(h.key)) end
+
+  local h = GC.cdb.history
+  local n = #h
+  local max = math.max(0, n - HIST_ROWS)
+  if f.offset > max then f.offset = max end
+  for i = 1, HIST_ROWS do
+    local r = f.rows[i]
+    local e = h[n - f.offset - i + 1] -- newest first
+    if e then
+      r.entry = e
+      r.cells.time:SetText(date("%d.%m. %H:%M", e.t))
+      r.cells.ex:SetText(historyExerciseText(e))
+      r.cells.reason:SetText(GC.ReasonText(e))
+      r.cells.status:SetText((STATUS_COLOR[e.status] or "") .. GC.L("st_" .. e.status) .. "|r")
+      setButtonText(r.del, GC.L("hist_delete"))
+      r:Show()
+    else
+      r.entry = nil
+      r:Hide()
+    end
+  end
+  f.empty:SetText(n == 0 and GC.L("hist_empty") or "")
+  f.pos:SetText(n > HIST_ROWS and ((f.offset + 1) .. "-" .. math.min(n, f.offset + HIST_ROWS) .. " / " .. n) or "")
+end
+
+function UI:ToggleHistory()
+  if not self.historyFrame then self:InitHistory() end
+  if self.historyFrame:IsShown() then
+    self.historyFrame:Hide()
+  else
+    self.historyFrame.offset = 0
+    self.historyFrame:Show()
+    self:RefreshHistory()
+  end
+end
+
+-------------------------------------------------------------------------------
 -- Slash commands
 -------------------------------------------------------------------------------
 local TESTS = {
@@ -546,6 +678,8 @@ SlashCmdList["GYMCHALLENGE"] = function(input)
     UI:Toggle()
   elseif cmd == "rank" then
     UI:ToggleRank()
+  elseif cmd == "history" then
+    UI:ToggleHistory()
   elseif cmd == "lang" and (arg == "de" or arg == "en") then
     GC.db.lang = arg
     GC.Print(GC.L("lang_set"))

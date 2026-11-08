@@ -37,12 +37,14 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 - **Erledigt** entfernt eine Übung. **Start** startet den Timer einer Plank. Ist die Zeit um, ertönt ein Ton, aber die Übung bleibt in der Liste, bis du sie abhakst.
 - **Liste leeren** fragt vorher nach. Deine Statistik bleibt dabei erhalten.
 - Mit **DE/EN** wechselst du die Sprache, mit **Sound an/aus** schaltest du die Töne.
+- **Verlauf** zeigt alle zugewiesenen Übungen mit Zeit, Grund und Status (offen, erledigt, entfernt, gelandet, geschafft, nicht geschafft), die neuesten zuerst. Mit dem Mausrad blätterst du. Mit **X** löschst du ein einzelnes Ereignis, nach einer Rückfrage. Das Ereignis verschwindet dann auch aus deiner Statistik und aus der Rangliste deiner Gruppe. Gespeichert werden die letzten 500 Einträge.
 - Die offene Liste und die gesammelten Paladine einer Crowded Area bleiben über `/reload` und Neustart erhalten.
 
 ### Befehle
 ```
 /gym                    Fenster an/aus
 /gym rank               Gruppen-Rangliste
+/gym history            Verlauf deiner Übungen
 /gym lang de|en         Sprache
 /gym sound              Sound an/aus
 /gym crowded auto|on|off
@@ -62,6 +64,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 - **Keine Doppelzählung:** Jeder sendet seine eigene Gesamtsumme mit einer Revisionsnummer. Der Empfänger ersetzt den alten Eintrag, statt etwas zu addieren. Gleiche oder ältere Daten werden ignoriert.
 - Empfangene Werte werden lokal gespeichert, für den ganzen Account. Sie bleiben auch nach dem Verlassen der Gruppe sichtbar. Dein eigener Eintrag ist grün und mit „(du)“ markiert. Namen werden ohne Realm angezeigt. Die Spalte „aktualisiert“ zeigt, wann der Spieler seine Werte zuletzt geändert hat.
 - Die Rangliste hat eigene Spalten für Squats, Liegestütze, Burpees, Sit-ups, Plank (Zeit), Flug +/- (Flug-Planks geschafft/nicht geschafft) und Gesamt (Summe der Wiederholungen). Mit einem Klick auf einen Spaltenkopf sortierst du nach dieser Spalte.
+- Mit **Statistiken laden** fragst du alle Addon-Nutzer in deiner Gruppe sofort nach ihren aktuellen Werten.
 - Du kannst den Austausch abschalten und die Rangliste zurücksetzen.
 
 **Technische Grenzen beim Austausch:**
