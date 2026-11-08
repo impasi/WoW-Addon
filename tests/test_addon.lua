@@ -74,6 +74,29 @@ check("hysteresis keeps crowded", GC.Areas.IsCrowded())
 Mock.pos = { 200, 100 } Mock.tick()
 check("far from spot uncrowded", not GC.Areas.IsCrowded())
 
+-- Save spot dialog: whole subzone
+Mock.zone = "Brachland"; Mock.subzone = "Das Wegekreuz"; Mock.pos = { 9000, 9000 }
+Mock.tick()
+check("crossroads not crowded yet", not GC.Areas.IsCrowded())
+GC.UI:AskSaveSpot()
+check("dialog offers area", GymChallengeSpotChoice.area.text == "Gebiet: Das Wegekreuz")
+GymChallengeSpotChoice.area.scripts.OnClick()
+Mock.tick()
+check("saved subzone is crowded", GC.Areas.IsCrowded() and GC.Areas.reason == "reason_area")
+Mock.pos = { 9500, 9500 } Mock.tick()
+check("whole subzone crowded regardless of position", GC.Areas.IsCrowded())
+Mock.subzone = "" Mock.tick()
+check("leaving subzone uncrowded", not GC.Areas.IsCrowded())
+GC.UI:AskSaveSpot()
+check("no subzone: area option text", GymChallengeSpotChoice.area.text == "Kein Gebietsname hier")
+GymChallengeSpotChoice.radius.scripts.OnClick()
+Mock.tick()
+check("radius option saves spot", GC.Areas.IsCrowded() and GC.Areas.reason == "reason_spot")
+GymChallengeDB.spots[#GymChallengeDB.spots] = nil
+Mock.zone = "Wald von Elwynn"; Mock.pos = { 5000, 5000 }
+Mock.tick()
+GymChallengeCharDB.crowded.count = 0
+
 -- Flight leaving a crowded area: summary before flight
 Mock.pos = { 100, 100 } Mock.tick()
 Mock.units.nameplate6 = { name = "PalaC", class = "PALADIN", player = true }

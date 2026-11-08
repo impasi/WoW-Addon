@@ -14,6 +14,7 @@ local ACCOUNT_DEFAULTS = {
   spotRadius = 30,      -- yards around learned vendor/flight master spots
   spots = {},           -- learned crowded spots { x, y, instance }
   customCities = {},    -- zone names the player added as city
+  crowdedAreas = {},    -- whole subzones saved via "Save spot": ["Zone|Subzone"] = true
   leaderboard = {},     -- received stats, keyed by "Name-Realm"
   flightTimes = {},     -- learned flight durations: ["From > To"] = { t = seconds, n = flights }
   window = nil,         -- saved window position

@@ -69,6 +69,27 @@ function Areas.SaveSpot()
   return true
 end
 
+-- Current subzone (e.g. "Das Wegekreuz") and its key, or nil if there is none.
+function Areas.CurrentSubzone()
+  local sub = GC.SafeCall(GetSubZoneText)
+  local zone = GC.SafeCall(GetRealZoneText) or ""
+  if not sub or sub == "" then return nil end
+  return sub, zone .. "|" .. sub
+end
+
+-- Saves the whole current subzone as crowded area. Returns the subzone name or nil.
+function Areas.SaveSubzone()
+  local sub, key = Areas.CurrentSubzone()
+  if not sub then return nil end
+  GC.db.crowdedAreas[key] = true
+  return sub
+end
+
+function Areas.InSavedSubzone()
+  local _, key = Areas.CurrentSubzone()
+  return key and GC.db.crowdedAreas[key] or false
+end
+
 local function nearSpot(margin)
   local x, y, inst = Areas.GetPlayerPos()
   if not x then return false end
@@ -104,6 +125,7 @@ function Areas.Evaluate(wasCrowded)
   if GC.Events and GC.Events.IsFlying() then return false, nil end
   if Areas.IsCityZone() then return true, "reason_city" end
   if Areas.IsHarbor() then return true, "reason_harbor" end
+  if Areas.InSavedSubzone() then return true, "reason_area" end
   if nearSpot(wasCrowded and LEAVE_MARGIN or 0) then return true, "reason_spot" end
   return false, nil
 end

@@ -104,6 +104,53 @@ function UI:Confirm(text, onOk)
 end
 
 -------------------------------------------------------------------------------
+-- "Save spot": ask whether to save a radius around the position or the whole
+-- area (subzone, e.g. "Crossroads").
+-------------------------------------------------------------------------------
+local choice
+function UI:AskSaveSpot()
+  if not choice then
+    choice = CreateFrame("Frame", "GymChallengeSpotChoice", UIParent, "BackdropTemplate")
+    choice:SetSize(340, 120)
+    choice:SetBackdrop(BACKDROP)
+    choice:SetBackdropColor(0, 0, 0, 0.95)
+    choice:SetFrameStrata("DIALOG")
+    choice:SetPoint("CENTER", 0, 120)
+    choice:EnableMouse(true)
+    choice.text = choice:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    choice.text:SetPoint("TOP", 0, -16)
+    choice.text:SetWidth(310)
+    choice.radius = makeButton(choice, 100, function()
+      choice:Hide()
+      GC.Print(GC.Areas.SaveSpot() and GC.L("spot_saved") or GC.L("spot_failed"))
+      GC.Areas.Update()
+    end)
+    choice.radius:SetPoint("BOTTOMLEFT", 14, 40)
+    choice.area = makeButton(choice, 100, function()
+      choice:Hide()
+      local sub = GC.Areas.SaveSubzone()
+      GC.Print(sub and GC.L("area_saved", sub) or GC.L("area_failed"))
+      GC.Areas.Update()
+    end)
+    choice.area:SetPoint("BOTTOMRIGHT", -14, 40)
+    choice.cancel = makeButton(choice, 100, function() choice:Hide() end)
+    choice.cancel:SetPoint("BOTTOM", 0, 12)
+  end
+  local sub = GC.Areas.CurrentSubzone()
+  choice.text:SetText(GC.L("spot_question"))
+  setButtonText(choice.radius, GC.L("spot_radius", GC.db.spotRadius or 30))
+  if sub then
+    setButtonText(choice.area, GC.L("spot_area", sub))
+    choice.area:Enable()
+  else
+    setButtonText(choice.area, GC.L("spot_area_none"))
+    choice.area:Disable()
+  end
+  setButtonText(choice.cancel, GC.L("cancel"))
+  choice:Show()
+end
+
+-------------------------------------------------------------------------------
 -- Main window: to-do list
 --   y  -6  title ................................ [DE]  [x]
 --   y -32  [Sound: an] [Gebiet: Auto]
@@ -181,14 +228,7 @@ function UI:Init()
   f.clear:SetPoint("BOTTOMLEFT", 8, 24)
   f.rank = makeButton(f, 70, function() UI:ToggleRank() end)
   f.rank:SetPoint("LEFT", f.clear, "RIGHT", 4, 0)
-  f.spot = makeButton(f, 70, function()
-    if GC.Areas.SaveSpot() then
-      GC.Print(GC.L("spot_saved"))
-      GC.Areas.Update()
-    else
-      GC.Print(GC.L("spot_failed"))
-    end
-  end)
+  f.spot = makeButton(f, 70, function() UI:AskSaveSpot() end)
   f.history = makeButton(f, 60, function() UI:ToggleHistory() end)
   f.history:SetPoint("LEFT", f.rank, "RIGHT", 4, 0)
   f.spot:SetPoint("LEFT", f.history, "RIGHT", 4, 0)
@@ -691,8 +731,7 @@ SlashCmdList["GYMCHALLENGE"] = function(input)
   elseif cmd == "crowded" and (arg == "auto" or arg == "on" or arg == "off") then
     GC.Areas.SetMode(arg)
   elseif cmd == "spot" then
-    GC.Print(GC.Areas.SaveSpot() and GC.L("spot_saved") or GC.L("spot_failed"))
-    GC.Areas.Update()
+    UI:AskSaveSpot()
   elseif cmd == "city" then
     GC.Areas.ToggleCustomCity()
   elseif cmd == "comm" and (arg == "on" or arg == "off") then

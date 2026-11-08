@@ -24,7 +24,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 - **Crowded Areas:**
   - Hauptstädte, erkannt über Karten-ID oder Zonenname. Mit `/gym city` fügst du die aktuelle Zone als Stadt hinzu oder entfernst sie wieder.
   - Häfen, erkannt über Zonen- und Unterzonennamen.
-  - Ein Umkreis von 30 m um jeden Händler und Flugmeister, dessen Fenster du einmal geöffnet hast. Das Addon lernt diese Orte selbst. Mit „Ort merken“ kannst du eine Stelle auch manuell speichern, z. B. einen Schiffsanleger.
+  - Ein Umkreis von 30 m um jeden Händler und Flugmeister, dessen Fenster du einmal geöffnet hast. Das Addon lernt diese Orte selbst. Mit „Ort merken“ (oder `/gym spot`) speicherst du eine Stelle auch manuell. Das Addon fragt dann, was es speichern soll: einen **Umkreis von 30 m** um deine Position (z. B. für einen Schiffsanleger) oder das **ganze Gebiet** mit seinem Namen, z. B. „Das Wegekreuz“. Ein gespeichertes Gebiet gilt überall, wo das Spiel diesen Gebietsnamen anzeigt.
   - Mit der Schaltfläche „Gebiet“ wechselst du zwischen Auto, immer Crowded und immer Uncrowded.
   - Verlässt du eine Crowded Area per Flug, kommt die Summe **vor** dem Flug. Während des Flugs werden keine Paladine gezählt.
 - **Flugzeit-Anzeige:** Beim Abflug zeigt eine große, verschiebbare Anzeige oben in der Bildschirmmitte die erwartete Flugzeit und dann die Restzeit ("Flugzeit: 2:14 - noch 1:30"). Die API kennt keine Flugdauer. Deshalb merkt sich das Addon die Dauer jeder Strecke (Start > Ziel), die du einmal geflogen bist, für den ganzen Account. Beim ersten Flug auf einer Strecke steht dort "noch unbekannt". Flüge, deren Landung erst nach einem Login oder /reload erkannt wurde, werden nicht gelernt.
@@ -48,7 +48,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 /gym lang de|en         Sprache
 /gym sound              Sound an/aus
 /gym crowded auto|on|off
-/gym spot               aktuelle Position als Crowded Area merken
+/gym spot               Ort merken (Umkreis oder ganzes Gebiet)
 /gym city               aktuelle Zone als Stadt hinzufügen/entfernen
 /gym comm on|off        Ranglisten-Austausch an/aus
 /gym resetrank          empfangene Ranglisten-Daten löschen
