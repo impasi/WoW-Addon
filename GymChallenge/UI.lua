@@ -259,9 +259,9 @@ local function configureRow(r, task)
       if task.timerStart then
         local left = task.amount - (time() - task.timerStart)
         if left > 0 then
-          r.text:SetText(GC.TaskText(task) .. " – |cffffd100" .. GC.L("timer_left", GC.FormatDuration(left)) .. "|r")
+          r.text:SetText(GC.TaskText(task) .. " - |cffffd100" .. GC.L("timer_left", GC.FormatDuration(left)) .. "|r")
         else
-          r.text:SetText(GC.TaskText(task) .. " – |cff33ff33" .. GC.L("timer_over") .. "|r")
+          r.text:SetText(GC.TaskText(task) .. " - |cff33ff33" .. GC.L("timer_over") .. "|r")
         end
       else
         r.b2:SetText(GC.L("btn_start")); r.b2:Show()
@@ -311,43 +311,78 @@ end
 -------------------------------------------------------------------------------
 local function reps(e) return e.squats + e.pushups + e.burpees + e.situps end
 
+-- One column per exercise. Click a header to sort by that column.
+local RANK_COLUMNS = {
+  { key = "name",    head = "rank_header",  w = 130 },
+  { key = "squats",  head = "col_squats",   w = 52, value = function(e) return e.squats end },
+  { key = "pushups", head = "col_pushups",  w = 62, value = function(e) return e.pushups end },
+  { key = "burpees", head = "col_burpees",  w = 56, value = function(e) return e.burpees end },
+  { key = "situps",  head = "col_situps",   w = 52, value = function(e) return e.situps end },
+  { key = "plank",   head = "col_plank",    w = 52, value = function(e) return e.plank end,
+    text = function(e) return GC.FormatDuration(e.plank) end },
+  { key = "flights", head = "col_flights",  w = 52, value = function(e) return e.flightsMade end,
+    text = function(e) return e.flightsMade .. "/" .. e.flightsFailed end },
+  { key = "total",   head = "col_total",    w = 52, value = reps },
+  { key = "updated", head = "rank_updated", w = 80, value = function(e) return e.updated or 0 end,
+    text = function(e) return GC.FormatAgo(e.updated) end },
+}
+local RANK_WIDTH = 16
+for _, c in ipairs(RANK_COLUMNS) do RANK_WIDTH = RANK_WIDTH + c.w end
+
+local function columnByKey(key)
+  for _, c in ipairs(RANK_COLUMNS) do if c.key == key then return c end end
+end
+
 function UI:InitRank()
-  local f = makeWindow("GymChallengeRankFrame", 340, 90 + RANK_ROWS * 18 + 40, "rankWindow")
+  local f = makeWindow("GymChallengeRankFrame", RANK_WIDTH, 100 + RANK_ROWS * 18 + 40, "rankWindow")
   self.rankFrame = f
   f.note = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   f.note:SetPoint("TOPLEFT", 10, -28)
-  f.note:SetWidth(320)
+  f.note:SetWidth(RANK_WIDTH - 20)
   f.note:SetJustifyH("LEFT")
 
-  local function header(x, key)
-    local h = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    h:SetPoint("TOPLEFT", x, -48)
-    h.key = key
-    return h
+  f.headers = {}
+  local x = 10
+  for _, c in ipairs(RANK_COLUMNS) do
+    local h = CreateFrame("Button", nil, f)
+    h:SetSize(c.w, 16)
+    h:SetPoint("TOPLEFT", x, -56)
+    h.fs = h:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    h.fs:SetAllPoints()
+    h.fs:SetJustifyH("LEFT")
+    h.col = c
+    if c.value then
+      h:SetScript("OnClick", function()
+        GC.db.rankSort = c.key
+        UI:RefreshRank()
+      end)
+    end
+    c.x = x
+    x = x + c.w
+    table.insert(f.headers, h)
   end
-  f.headers = { header(10, "rank_header"), header(170, "rank_reps"), header(210, "rank_plank"), header(260, "rank_updated") }
 
   f.rows = {}
   for i = 1, RANK_ROWS do
     local r = CreateFrame("Frame", nil, f)
-    r:SetSize(320, 18)
-    r:SetPoint("TOPLEFT", 8, -62 - (i - 1) * 18)
+    r:SetSize(RANK_WIDTH - 16, 18)
+    r:SetPoint("TOPLEFT", 8, -72 - (i - 1) * 18)
     r:EnableMouse(true)
-    local function col(x, w)
+    r.bg = r:CreateTexture(nil, "BACKGROUND")
+    r.bg:SetAllPoints()
+    r.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.03 or 0.07)
+    r.cells = {}
+    for _, c in ipairs(RANK_COLUMNS) do
       local fs = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-      fs:SetPoint("LEFT", x, 0)
-      fs:SetWidth(w)
+      fs:SetPoint("LEFT", c.x - 8, 0)
+      fs:SetWidth(c.w - 4)
       fs:SetJustifyH("LEFT")
-      return fs
+      r.cells[c.key] = fs
     end
-    r.name, r.reps, r.plank, r.updated = col(2, 158), col(162, 40), col(202, 50), col(252, 70)
     r:SetScript("OnEnter", function(self)
-      if not self.entry or not GameTooltip then return end
-      local e = self.entry
+      if not self.label or not GameTooltip then return end
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
       GameTooltip:AddLine(self.label)
-      GameTooltip:AddLine(GC.L("rank_tooltip", e.squats, e.pushups, e.burpees, e.situps,
-        GC.FormatDuration(e.plank), e.flightsMade, e.flightsFailed), 1, 1, 1, true)
       GameTooltip:AddLine(GC.L("rank_note"), 0.6, 0.6, 0.6, true)
       GameTooltip:Show()
     end)
@@ -372,7 +407,12 @@ function UI:RefreshRank()
   if not f or not f:IsShown() then return end
   f.title:SetText(GC.L("rank_title"))
   f.note:SetText(GC.L("rank_note"))
-  for _, h in ipairs(f.headers) do h:SetText(GC.L(h.key)) end
+  local sortCol = columnByKey(GC.db.rankSort or "total") or columnByKey("total")
+  for _, h in ipairs(f.headers) do
+    local label = GC.L(h.col.head)
+    if h.col == sortCol then label = label .. " v" end
+    h.fs:SetText(label)
+  end
   f.comm:SetText(GC.db.comm and GC.L("rank_comm_on") or GC.L("rank_comm_off"))
   f.reset:SetText(GC.L("rank_reset"))
 
@@ -385,18 +425,29 @@ function UI:RefreshRank()
     table.insert(list, { label = name, entry = e })
     others = others + 1
   end
-  table.sort(list, function(a, b) return reps(a.entry) > reps(b.entry) end)
+  table.sort(list, function(a, b)
+    local va, vb = sortCol.value(a.entry), sortCol.value(b.entry)
+    if va ~= vb then return va > vb end
+    return a.label < b.label
+  end)
 
   for i = 1, RANK_ROWS do
     local r, item = f.rows[i], list[i]
     if item then
       local e = item.entry
-      r.entry, r.label = e, item.label
+      r.label = item.label
       local color = item.self and "|cff33ff99" or "|cffffffff"
-      r.name:SetText(color .. i .. ". " .. item.label .. "|r")
-      r.reps:SetText(reps(e))
-      r.plank:SetText(GC.FormatDuration(e.plank))
-      r.updated:SetText(GC.FormatAgo(e.updated))
+      for _, c in ipairs(RANK_COLUMNS) do
+        local text
+        if c.key == "name" then
+          text = color .. i .. ". " .. item.label .. "|r"
+        elseif c.text then
+          text = c.text(e)
+        else
+          text = tostring(c.value(e))
+        end
+        r.cells[c.key]:SetText(text)
+      end
       r:Show()
     else
       r:Hide()
@@ -404,7 +455,7 @@ function UI:RefreshRank()
   end
   f.empty:SetText(others == 0 and GC.L("rank_empty") or "")
   f.empty:ClearAllPoints()
-  f.empty:SetPoint("TOPLEFT", 10, -64 - math.min(#list, RANK_ROWS) * 18)
+  f.empty:SetPoint("TOPLEFT", 10, -74 - math.min(#list, RANK_ROWS) * 18)
 end
 
 function UI:ToggleRank()

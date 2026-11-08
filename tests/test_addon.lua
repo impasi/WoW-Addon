@@ -216,6 +216,17 @@ check("english text", GC.TaskText({ kind = "pushups", amount = 5 }) == "5 push-u
 GymChallengeDB.lang = "de"
 check("german text", GC.TaskText({ kind = "pushups", amount = 5 }) == "5 Liegestütze")
 GC.UI:ToggleRank(); GC.UI:RefreshRank()
+local rf = GymChallengeRankFrame
+check("rank has 9 columns", #rf.headers == 9)
+local function rowName(i) return rf.rows[i].cells.name.text end
+for _, h in ipairs(rf.headers) do if h.col.key == "plank" then h.scripts.OnClick() end end
+check("sort by plank: own (more plank) first", rowName(1):find("Ich") ~= nil)
+for _, h in ipairs(rf.headers) do if h.col.key == "pushups" then h.scripts.OnClick() end end
+check("pushups column shows value", rf.rows[1].cells.pushups.text ~= nil)
+GymChallengeDB.leaderboard["Freund-Realm"] = { rev=1, updated=Mock.now, received=Mock.now, squats=1, pushups=999, burpees=0, situps=0, plank=0, flightsMade=2, flightsFailed=1 }
+GC.UI:RefreshRank()
+check("sort by pushups: friend first", rowName(1):find("Freund") ~= nil and rf.rows[1].cells.pushups.text == "999")
+check("flights column", rf.rows[1].cells.flights.text == "2/1")
 for _, c in ipairs({ "", "rank", "status", "test death", "test flightstart", "test flightend", "test paladin", "bogus" }) do
   local ok, err = pcall(SlashCmdList["GYMCHALLENGE"], c)
   check("slash '" .. c .. "' " .. tostring(err), ok)

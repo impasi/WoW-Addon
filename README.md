@@ -61,6 +61,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 - Übertragen werden nur Zahlen: Revision, Zeitstempel, Squats, Liegestütze, Burpees, Sit-ups, Plank-Sekunden und Flug-Planks (geschafft / nicht geschafft). Eine Nachricht hat höchstens etwa 60 Byte, das Limit liegt bei 255.
 - **Keine Doppelzählung:** Jeder sendet seine eigene Gesamtsumme mit einer Revisionsnummer. Der Empfänger ersetzt den alten Eintrag, statt etwas zu addieren. Gleiche oder ältere Daten werden ignoriert.
 - Empfangene Werte werden lokal gespeichert, für den ganzen Account. Sie bleiben auch nach dem Verlassen der Gruppe sichtbar. Dein eigener Eintrag ist grün und mit „(du)“ markiert. Die Spalte „aktualisiert“ zeigt, wann der Spieler seine Werte zuletzt geändert hat.
+- Die Rangliste hat eigene Spalten für Squats, Liegestütze, Burpees, Sit-ups, Plank (Zeit), Flug +/- (Flug-Planks geschafft/nicht geschafft) und Gesamt (Summe der Wiederholungen). Mit einem Klick auf einen Spaltenkopf sortierst du nach dieser Spalte.
 - Du kannst den Austausch abschalten und die Rangliste zurücksetzen.
 
 **Technische Grenzen beim Austausch:**
