@@ -35,6 +35,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 ## Bedienung
 - `/gym` öffnet oder schließt das Fenster. Bei jeder Übung stehen Anzahl bzw. Dauer und der Grund.
 - **Erledigt** entfernt eine Übung. **Start** startet den Timer einer Plank. Ist die Zeit um, ertönt ein Ton, aber die Übung bleibt in der Liste, bis du sie abhakst.
+- **Fenstergröße:** Das Hauptfenster, die Rangliste und der Verlauf lassen sich über den Griff unten rechts größer und kleiner ziehen. In ein größeres Fenster passen mehr Zeilen. Wird es breiter, bekommen in der Rangliste die Namen und im Verlauf die Gründe mehr Platz. Größe und Position werden gespeichert.
 - **Liste leeren** fragt vorher nach. Deine Statistik bleibt dabei erhalten.
 - Mit **DE/EN** wechselst du die Sprache, mit **Sound an/aus** schaltest du die Töne.
 - **Verlauf** zeigt alle zugewiesenen Übungen mit Zeit, Grund und Status (offen, erledigt, entfernt, gelandet, geschafft, nicht geschafft), die neuesten zuerst. Mit dem Mausrad blätterst du. Mit **X** löschst du ein einzelnes Ereignis, nach einer Rückfrage. Das Ereignis verschwindet dann auch aus deiner Statistik und aus der Rangliste deiner Gruppe. Gespeichert werden die letzten 500 Einträge.

@@ -338,6 +338,32 @@ GymChallengeRankFrame.load.scripts.OnClick()
 check("load stats without group explains", Mock.lastPrint:find("Gruppe") ~= nil)
 check("slash history", pcall(SlashCmdList["GYMCHALLENGE"], "history"))
 
+-- Resizable windows
+local mf = GymChallengeFrame
+check("main window has resize grip", mf.grip ~= nil)
+local visBefore = mf.visibleRows
+mf:SetSize(500, 700)
+check("taller main window shows more rows", mf.visibleRows > visBefore)
+for i = 1, 12 do GC.AddTask("squats", 1, "r_death") end
+GC.UI:Refresh()
+local shown = 0
+for _, r in ipairs(mf.rows) do if r.shown then shown = shown + 1 end end
+check("rows shown match visible rows", shown == math.min(mf.visibleRows, #GymChallengeCharDB.tasks))
+mf.grip.scripts.OnMouseUp(mf.grip)
+check("main size saved", GymChallengeDB.windowSize and GymChallengeDB.windowSize.w == 500)
+mf:SetSize(380, 200)
+check("small main window keeps >= 1 row", mf.visibleRows >= 1)
+local rf2 = GymChallengeRankFrame
+rf2:SetSize(900, 500)
+local nameCol
+for _, h in ipairs(rf2.headers) do if h.col.key == "name" then nameCol = h.col end end
+check("wider ranking widens name column", nameCol.cw > nameCol.w)
+check("taller ranking more rows", rf2.visibleRows > 10)
+local hf = GymChallengeHistoryFrame
+hf:SetSize(800, 600)
+check("taller history more rows", hf.visibleRows > 14)
+GC.ClearTasks()
+
 -- Secret values are skipped without errors
 issecretvalue = function(v) return v == "SECRET" end
 Mock.units.nameplate9 = { name = "SECRET", class = "PALADIN", player = true }

@@ -15,8 +15,31 @@ local BACKDROP = {
   insets = { left = 3, right = 3, top = 3, bottom = 3 },
 }
 
-local function makeWindow(name, w, h, posKey)
+-- Width/height of a frame, with a fallback while the size is not known yet.
+local function frameW(f, default)
+  local w = f.GetWidth and f:GetWidth()
+  return (w and w > 0) and w or default
+end
+local function frameH(f, default)
+  local h = f.GetHeight and f:GetHeight()
+  return (h and h > 0) and h or default
+end
+UI.frameW, UI.frameH = frameW, frameH
+
+local function savePosition(f, posKey)
+  local point, _, relPoint, x, y = f:GetPoint()
+  if point then GC.db[posKey] = { point = point, relPoint = relPoint, x = x, y = y } end
+end
+
+-- opts (optional): { minW, minH, onResize = function(frame) } makes the window
+-- resizable with a grip in the bottom right corner. The size is saved.
+local function makeWindow(name, w, h, posKey, opts)
   local f = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
+  local size = opts and GC.db[posKey .. "Size"]
+  if size and size.w and size.h then
+    w = math.max(opts.minW, size.w)
+    h = math.max(opts.minH, size.h)
+  end
   f:SetSize(w, h)
   f:SetBackdrop(BACKDROP)
   f:SetBackdropColor(0, 0, 0, 0.85)
@@ -28,8 +51,7 @@ local function makeWindow(name, w, h, posKey)
   f:SetScript("OnDragStart", f.StartMoving)
   f:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
-    local point, _, relPoint, x, y = self:GetPoint()
-    GC.db[posKey] = { point = point, relPoint = relPoint, x = x, y = y }
+    savePosition(self, posKey)
   end)
   local pos = GC.db[posKey]
   if pos then
@@ -41,6 +63,33 @@ local function makeWindow(name, w, h, posKey)
   f.title:SetPoint("TOPLEFT", 10, -10)
   local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", 2, 2)
+
+  if opts then
+    f:SetResizable(true)
+    if f.SetResizeBounds then
+      f:SetResizeBounds(opts.minW, opts.minH, 1800, 1400)
+    elseif f.SetMinResize then
+      f:SetMinResize(opts.minW, opts.minH)
+    end
+    local grip = CreateFrame("Button", nil, f)
+    grip:SetSize(16, 16)
+    grip:SetPoint("BOTTOMRIGHT", -3, 3)
+    grip:SetFrameLevel((f:GetFrameLevel() or 0) + 10)
+    grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+    grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+    grip:SetScript("OnMouseDown", function(_, button)
+      if button == "LeftButton" then f:StartSizing("BOTTOMRIGHT") end
+    end)
+    grip:SetScript("OnMouseUp", function()
+      f:StopMovingOrSizing()
+      GC.db[posKey .. "Size"] = { w = frameW(f, w), h = frameH(f, h) }
+      savePosition(f, posKey)
+      opts.onResize(f)
+    end)
+    f.grip = grip
+    f:SetScript("OnSizeChanged", function() opts.onResize(f) end)
+  end
   return f
 end
 
@@ -161,11 +210,23 @@ end
 --   bottom [Liste leeren] [Rangliste] [Ort merken] + note line
 -------------------------------------------------------------------------------
 local ROWS_TOP = 106
-local ROW_W = WIN_W - 16
+local MAX_ROWS = 25
+local MAIN_BOTTOM = 56
+
+local function layoutMain(f)
+  if not f.status then return end
+  local W = frameW(f, WIN_W)
+  local H = frameH(f, ROWS_TOP + ROWS * ROW_H + MAIN_BOTTOM)
+  f.visibleRows = math.max(1, math.min(MAX_ROWS, math.floor((H - ROWS_TOP - MAIN_BOTTOM) / ROW_H)))
+  for _, fs in ipairs({ f.status, f.warn, f.count, f.note }) do fs:SetWidth(W - 20) end
+  if f.rows then UI:Refresh() end
+end
 
 function UI:Init()
-  local f = makeWindow("GymChallengeFrame", WIN_W, ROWS_TOP + ROWS * ROW_H + 56, "window")
+  local f = makeWindow("GymChallengeFrame", WIN_W, ROWS_TOP + ROWS * ROW_H + MAIN_BOTTOM, "window",
+    { minW = WIN_W, minH = ROWS_TOP + 2 * ROW_H + MAIN_BOTTOM, onResize = layoutMain })
   self.frame = f
+  f.visibleRows = ROWS
 
   f.lang = makeButton(f, 36, function()
     GC.db.lang = (GC.GetLang() == "de") and "en" or "de"
@@ -196,10 +257,11 @@ function UI:Init()
 
   f.offset = 0
   f.rows = {}
-  for i = 1, ROWS do
+  for i = 1, MAX_ROWS do
     local r = CreateFrame("Frame", nil, f)
-    r:SetSize(ROW_W, ROW_H - 2)
+    r:SetHeight(ROW_H - 2)
     r:SetPoint("TOPLEFT", 8, -ROWS_TOP - (i - 1) * ROW_H)
+    r:SetPoint("RIGHT", f, "RIGHT", -8, 0)
     r.bg = r:CreateTexture(nil, "BACKGROUND")
     r.bg:SetAllPoints()
     r.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.04 or 0.08)
@@ -217,7 +279,7 @@ function UI:Init()
   end
   f:EnableMouseWheel(true)
   f:SetScript("OnMouseWheel", function(_, delta)
-    local max = math.max(0, #GC.cdb.tasks - ROWS)
+    local max = math.max(0, #GC.cdb.tasks - f.visibleRows)
     f.offset = math.min(max, math.max(0, f.offset - delta))
     UI:Refresh()
   end)
@@ -239,6 +301,7 @@ function UI:Init()
 
   GC.OnTick(function() if f:IsShown() then UI:Refresh() end end)
   self:InitFlightTimer()
+  layoutMain(f)
   self:Refresh()
 end
 
@@ -326,7 +389,7 @@ function UI:RefreshStatus()
   f.warn:SetText(GC.Paladins.NameplatesEnabled() and "" or GC.L("warn_nameplates"))
 end
 
-local function configureRow(r, task)
+local function configureRow(r, task, rowW)
   r.b1:Hide(); r.b2:Hide(); r.onB1 = nil; r.onB2 = nil
   r.text:SetText(GC.TaskText(task))
   local sub = GC.ReasonText(task)
@@ -362,7 +425,7 @@ local function configureRow(r, task)
   end
   r.sub:SetText(sub)
   -- Text uses the space left of the buttons, so it never runs under them.
-  local textW = ROW_W - 10 - buttonsW - 8
+  local textW = rowW - 10 - buttonsW - 8
   r.text:SetWidth(textW)
   r.sub:SetWidth(textW)
 end
@@ -381,14 +444,16 @@ function UI:Refresh()
   f.note:SetText(GC.L("assigned_note"))
 
   local tasks = GC.cdb.tasks
-  local max = math.max(0, #tasks - ROWS)
+  local visible = f.visibleRows or ROWS
+  local max = math.max(0, #tasks - visible)
   if f.offset > max then f.offset = max end
   f.count:SetText(#tasks > 0 and GC.L("open_tasks", #tasks) or GC.L("no_tasks"))
-  for i = 1, ROWS do
+  local rowW = frameW(f, WIN_W) - 16
+  for i = 1, MAX_ROWS do
     local r = f.rows[i]
-    local task = tasks[i + f.offset]
+    local task = i <= visible and tasks[i + f.offset]
     if task then
-      configureRow(r, task)
+      configureRow(r, task, rowW)
       r:Show()
     else
       r:Hide()
@@ -425,13 +490,52 @@ local RANK_COLUMNS = {
 local RANK_WIDTH = 16
 for _, c in ipairs(RANK_COLUMNS) do RANK_WIDTH = RANK_WIDTH + c.w end
 
+local MAX_RANK_ROWS = 40
+local RANK_TOP = 72
+local RANK_BOTTOM = 40
+local NAME_MIN_W = 90
+
+-- Columns keep their width; the name column takes the extra space.
+local function layoutRank(f)
+  local W = frameW(f, RANK_WIDTH)
+  local H = frameH(f, RANK_TOP + RANK_ROWS * 18 + RANK_BOTTOM)
+  f.visibleRows = math.max(1, math.min(MAX_RANK_ROWS, math.floor((H - RANK_TOP - RANK_BOTTOM) / 18)))
+  local x = 10
+  for _, c in ipairs(RANK_COLUMNS) do
+    c.cw = c.w
+    if c.key == "name" then c.cw = math.max(NAME_MIN_W, c.w + (W - RANK_WIDTH)) end
+    c.x = x
+    x = x + c.cw
+  end
+  for _, h in ipairs(f.headers) do
+    h:ClearAllPoints()
+    h:SetPoint("TOPLEFT", h.col.x, -56)
+    h:SetSize(h.col.cw, 16)
+    h.fs:SetWidth(h.col.cw - 4)
+  end
+  for _, r in ipairs(f.rows) do
+    for _, c in ipairs(RANK_COLUMNS) do
+      local fs = r.cells[c.key]
+      fs:ClearAllPoints()
+      fs:SetPoint("LEFT", c.x - 8, 0)
+      fs:SetWidth(c.cw - 6)
+    end
+  end
+  f.note:SetWidth(W - 20)
+  f.empty:SetWidth(W - 20)
+  UI:RefreshRank()
+end
+
 local function columnByKey(key)
   for _, c in ipairs(RANK_COLUMNS) do if c.key == key then return c end end
 end
 
 function UI:InitRank()
-  local f = makeWindow("GymChallengeRankFrame", RANK_WIDTH, 100 + RANK_ROWS * 18 + 40, "rankWindow")
+  local f = makeWindow("GymChallengeRankFrame", RANK_WIDTH, RANK_TOP + RANK_ROWS * 18 + RANK_BOTTOM + 10, "rankWindow",
+    { minW = RANK_WIDTH - (RANK_COLUMNS[1].w - NAME_MIN_W), minH = RANK_TOP + 3 * 18 + RANK_BOTTOM,
+      onResize = function(fr) if fr.rows then layoutRank(fr) end end })
   self.rankFrame = f
+  f.visibleRows = RANK_ROWS
   f.note = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   f.note:SetPoint("TOPLEFT", 10, -28)
   f.note:SetWidth(RANK_WIDTH - 20)
@@ -459,10 +563,11 @@ function UI:InitRank()
   end
 
   f.rows = {}
-  for i = 1, RANK_ROWS do
+  for i = 1, MAX_RANK_ROWS do
     local r = CreateFrame("Frame", nil, f)
-    r:SetSize(RANK_WIDTH - 16, 18)
-    r:SetPoint("TOPLEFT", 8, -72 - (i - 1) * 18)
+    r:SetHeight(18)
+    r:SetPoint("TOPLEFT", 8, -RANK_TOP - (i - 1) * 18)
+    r:SetPoint("RIGHT", f, "RIGHT", -8, 0)
     r:EnableMouse(true)
     r.bg = r:CreateTexture(nil, "BACKGROUND")
     r.bg:SetAllPoints()
@@ -494,13 +599,14 @@ function UI:InitRank()
   f.reset = makeButton(f, 90, function()
     UI:Confirm(GC.L("confirm_reset_rank"), function() GC.Comm:ResetLeaderboard() end)
   end)
-  f.reset:SetPoint("BOTTOMRIGHT", -8, 10)
+  f.reset:SetPoint("BOTTOMRIGHT", -24, 10)
   f.load = makeButton(f, 90, function()
     local _, key = GC.Comm:RequestStats()
     GC.Print(GC.L(key))
   end)
   f.load:SetPoint("LEFT", f.comm, "RIGHT", 6, 0)
   f:Hide()
+  layoutRank(f)
 end
 
 function UI:RefreshRank()
@@ -534,8 +640,9 @@ function UI:RefreshRank()
     return a.label < b.label
   end)
 
-  for i = 1, RANK_ROWS do
-    local r, item = f.rows[i], list[i]
+  local visible = f.visibleRows or RANK_ROWS
+  for i = 1, MAX_RANK_ROWS do
+    local r, item = f.rows[i], (i <= visible) and list[i] or nil
     if item then
       local e = item.entry
       r.label = item.label
@@ -558,7 +665,7 @@ function UI:RefreshRank()
   end
   f.empty:SetText(others == 0 and GC.L("rank_empty") or "")
   f.empty:ClearAllPoints()
-  f.empty:SetPoint("TOPLEFT", 10, -74 - math.min(#list, RANK_ROWS) * 18)
+  f.empty:SetPoint("TOPLEFT", 10, -RANK_TOP - 2 - math.min(#list, visible) * 18)
 end
 
 function UI:ToggleRank()
@@ -589,14 +696,53 @@ for _, c in ipairs(HIST_COLUMNS) do HIST_WIDTH = HIST_WIDTH + c.w end
 local STATUS_COLOR = { open = "|cffffd100", done = "|cff33ff33", made = "|cff33ff33",
   failed = "|cffff5555", cleared = "|cff999999", landed = "|cffffd100" }
 
+local MAX_HIST_ROWS = 60
+local HIST_TOP = 66
+local HIST_BOTTOM = 40
+local REASON_MIN_W = 110
+
+-- The reason column takes the extra width.
+local function layoutHistory(f)
+  local W = frameW(f, HIST_WIDTH)
+  local H = frameH(f, HIST_TOP + HIST_ROWS * 18 + HIST_BOTTOM)
+  f.visibleRows = math.max(1, math.min(MAX_HIST_ROWS, math.floor((H - HIST_TOP - HIST_BOTTOM) / 18)))
+  local x = 10
+  for _, c in ipairs(HIST_COLUMNS) do
+    c.cw = c.w
+    if c.key == "reason" then c.cw = math.max(REASON_MIN_W, c.w + (W - HIST_WIDTH)) end
+    c.x = x
+    x = x + c.cw
+  end
+  for i, h in ipairs(f.headers) do
+    local c = HIST_COLUMNS[i]
+    h:ClearAllPoints()
+    h:SetPoint("TOPLEFT", c.x, -50)
+    h:SetWidth(c.cw - 4)
+  end
+  for _, r in ipairs(f.rows) do
+    for _, c in ipairs(HIST_COLUMNS) do
+      local fs = r.cells[c.key]
+      fs:ClearAllPoints()
+      fs:SetPoint("LEFT", c.x - 8, 0)
+      fs:SetWidth(c.cw - 6)
+    end
+  end
+  f.note:SetWidth(W - 20)
+  f.empty:SetWidth(W - 20)
+  UI:RefreshHistory()
+end
+
 local function historyExerciseText(e)
   if e.kind == "flight" then return GC.L("ex_flight_done", GC.FormatDuration(e.amount)) end
   return GC.L("ex_" .. e.kind, e.amount)
 end
 
 function UI:InitHistory()
-  local f = makeWindow("GymChallengeHistoryFrame", HIST_WIDTH, 92 + HIST_ROWS * 18 + 20, "historyWindow")
+  local f = makeWindow("GymChallengeHistoryFrame", HIST_WIDTH, HIST_TOP + HIST_ROWS * 18 + HIST_BOTTOM, "historyWindow",
+    { minW = HIST_WIDTH - (HIST_COLUMNS[3].w - REASON_MIN_W), minH = HIST_TOP + 3 * 18 + HIST_BOTTOM,
+      onResize = function(fr) if fr.rows then layoutHistory(fr) end end })
   self.historyFrame = f
+  f.visibleRows = HIST_ROWS
   f.note = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   f.note:SetPoint("TOPLEFT", 10, -30)
   oneLine(f.note, HIST_WIDTH - 20)
@@ -615,10 +761,11 @@ function UI:InitHistory()
 
   f.offset = 0
   f.rows = {}
-  for i = 1, HIST_ROWS do
+  for i = 1, MAX_HIST_ROWS do
     local r = CreateFrame("Frame", nil, f)
-    r:SetSize(HIST_WIDTH - 16, 18)
-    r:SetPoint("TOPLEFT", 8, -66 - (i - 1) * 18)
+    r:SetHeight(18)
+    r:SetPoint("TOPLEFT", 8, -HIST_TOP - (i - 1) * 18)
+    r:SetPoint("RIGHT", f, "RIGHT", -8, 0)
     r.bg = r:CreateTexture(nil, "BACKGROUND")
     r.bg:SetAllPoints()
     r.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.03 or 0.07)
@@ -641,7 +788,7 @@ function UI:InitHistory()
   end
   f:EnableMouseWheel(true)
   f:SetScript("OnMouseWheel", function(_, delta)
-    local max = math.max(0, #GC.cdb.history - HIST_ROWS)
+    local max = math.max(0, #GC.cdb.history - f.visibleRows)
     f.offset = math.min(max, math.max(0, f.offset - delta))
     UI:RefreshHistory()
   end)
@@ -650,8 +797,9 @@ function UI:InitHistory()
   f.empty:SetPoint("TOPLEFT", 10, -70)
   oneLine(f.empty, HIST_WIDTH - 20)
   f.pos = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  f.pos:SetPoint("BOTTOMRIGHT", -12, 10)
+  f.pos:SetPoint("BOTTOMRIGHT", -24, 10)
   f:Hide()
+  layoutHistory(f)
 end
 
 function UI:RefreshHistory()
@@ -663,11 +811,12 @@ function UI:RefreshHistory()
 
   local h = GC.cdb.history
   local n = #h
-  local max = math.max(0, n - HIST_ROWS)
+  local visible = f.visibleRows or HIST_ROWS
+  local max = math.max(0, n - visible)
   if f.offset > max then f.offset = max end
-  for i = 1, HIST_ROWS do
+  for i = 1, MAX_HIST_ROWS do
     local r = f.rows[i]
-    local e = h[n - f.offset - i + 1] -- newest first
+    local e = (i <= visible) and h[n - f.offset - i + 1] or nil -- newest first
     if e then
       r.entry = e
       r.cells.time:SetText(date("%d.%m. %H:%M", e.t))
@@ -682,7 +831,7 @@ function UI:RefreshHistory()
     end
   end
   f.empty:SetText(n == 0 and GC.L("hist_empty") or "")
-  f.pos:SetText(n > HIST_ROWS and ((f.offset + 1) .. "-" .. math.min(n, f.offset + HIST_ROWS) .. " / " .. n) or "")
+  f.pos:SetText(n > visible and ((f.offset + 1) .. "-" .. math.min(n, f.offset + visible) .. " / " .. n) or "")
 end
 
 function UI:ToggleHistory()
