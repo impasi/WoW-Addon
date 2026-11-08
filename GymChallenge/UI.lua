@@ -604,7 +604,8 @@ end
 function UI:Refresh()
   local f = self.frame
   if not f then return end
-  f.title:SetText(GC.L("title"))
+  local pts = GC.OwnPoints()
+  f.title:SetText(GC.L("title") .. "  " .. GC.RankName(GC.RankFor(pts), true) .. " |cffaaaaaa" .. GC.L("points_short", pts) .. "|r")
   setButtonText(f.lang, GC.L("btn_lang"))
   setButtonText(f.sound, GC.db.sound and GC.L("btn_sound_on") or GC.L("btn_sound_off"))
   setButtonText(f.mode, GC.L("crowded_mode_" .. (GC.db.crowdedMode or "auto")))
@@ -647,7 +648,10 @@ local function reps(e) return e.squats + e.pushups + e.burpees + e.situps end
 
 -- One column per exercise. Click a header to sort by that column.
 local RANK_COLUMNS = {
-  { key = "name",    head = "rank_header",  w = 150 },
+  { key = "name",    head = "rank_header",  w = 150, sortable = true },
+  { key = "rank",    head = "col_rank",     w = 86, value = function(e) return GC.CalcPoints(e) end,
+    text = function(e) return GC.RankName(GC.RankFor(GC.CalcPoints(e)), true) end },
+  { key = "points",  head = "col_points",   w = 64, value = function(e) return GC.CalcPoints(e) end },
   { key = "squats",  head = "col_squats",   w = 58, value = function(e) return e.squats end },
   { key = "pushups", head = "col_pushups",  w = 70, value = function(e) return e.pushups end },
   { key = "burpees", head = "col_burpees",  w = 64, value = function(e) return e.burpees end },
@@ -724,9 +728,15 @@ function UI:InitRank()
     h.fs:SetPoint("LEFT")
     oneLine(h.fs, c.w - 4)
     h.col = c
-    if c.value then
+    if c.value or c.sortable then
+      -- Click: sort by this column; click again: reverse the direction.
       h:SetScript("OnClick", function()
-        GC.db.rankSort = c.key
+        if GC.db.rankSort == c.key then
+          GC.db.rankSortAsc = not GC.db.rankSortAsc
+        else
+          GC.db.rankSort = c.key
+          GC.db.rankSortAsc = (c.key == "name") -- names A-Z, numbers high to low
+        end
         UI:RefreshRank()
       end)
     end
@@ -757,6 +767,15 @@ function UI:InitRank()
       if not self.label or not GameTooltip then return end
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
       GameTooltip:AddLine(self.label)
+      if self.entry then
+        local pts = GC.CalcPoints(self.entry)
+        local rank, nextRank = GC.RankFor(pts)
+        GameTooltip:AddLine(GC.L("rank_points_line", GC.RankName(rank, true), pts), 1, 1, 1)
+        if nextRank then
+          GameTooltip:AddLine(GC.L("rank_next_line", nextRank.min - pts, GC.RankName(nextRank, true)), 0.8, 0.8, 0.8)
+        end
+      end
+      GameTooltip:AddLine(GC.L("rank_points_info"), 0.6, 0.6, 0.6, true)
       GameTooltip:AddLine(GC.L("rank_note"), 0.6, 0.6, 0.6, true)
       GameTooltip:Show()
     end)
@@ -788,10 +807,11 @@ function UI:RefreshRank()
   if not f or not f:IsShown() then return end
   f.title:SetText(GC.L("rank_title"))
   f.note:SetText(GC.L("rank_note"))
-  local sortCol = columnByKey(GC.db.rankSort or "total") or columnByKey("total")
+  local sortCol = columnByKey(GC.db.rankSort or "points") or columnByKey("points")
+  local asc = GC.db.rankSortAsc and true or false
   for _, h in ipairs(f.headers) do
     local label = GC.L(h.col.head)
-    if h.col == sortCol then label = label .. " v" end
+    if h.col == sortCol then label = label .. (asc and " ^" or " v") end
     h.fs:SetText(label)
   end
   setButtonText(f.comm, GC.db.comm and GC.L("rank_comm_on") or GC.L("rank_comm_off"))
@@ -809,8 +829,16 @@ function UI:RefreshRank()
     others = others + 1
   end
   table.sort(list, function(a, b)
-    local va, vb = sortCol.value(a.entry), sortCol.value(b.entry)
-    if va ~= vb then return va > vb end
+    local va, vb
+    if sortCol.key == "name" then
+      va, vb = a.label:lower(), b.label:lower()
+    else
+      va, vb = sortCol.value(a.entry), sortCol.value(b.entry)
+    end
+    if va ~= vb then
+      if asc then return va < vb end
+      return va > vb
+    end
     return a.label < b.label
   end)
 
@@ -820,6 +848,7 @@ function UI:RefreshRank()
     if item then
       local e = item.entry
       r.label = item.label
+      r.entry = e
       local color = item.self and "|cff33ff99" or "|cffffffff"
       local medal = ({ "|cffffd700", "|cffd0d0d0", "|cffcd7f32" })[i] or "|cff888888"
       r.bg:SetColorTexture(unpack(item.self and THEME.own or (r.stripe and THEME.rowB or THEME.rowA)))

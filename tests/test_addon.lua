@@ -1,6 +1,6 @@
 -- Logic tests for GymChallenge against the mock API. Run: python3 tests/run_tests.py
 local GC = {}
-local files = { "Locales.lua", "Core.lua", "Challenges.lua", "Areas.lua", "Paladins.lua", "Events.lua", "Comm.lua", "UI.lua", "Minimap.lua" }
+local files = { "Locales.lua", "Core.lua", "Challenges.lua", "Points.lua", "Areas.lua", "Paladins.lua", "Events.lua", "Comm.lua", "UI.lua", "Minimap.lua" }
 for _, f in ipairs(files) do
   local chunk = assert(loadfile(ADDON_DIR .. "/" .. f))
   chunk("GymChallenge", GC)
@@ -308,7 +308,7 @@ GymChallengeDB.lang = "de"
 check("german text", GC.TaskText({ kind = "pushups", amount = 5 }) == "5 Liegestütze")
 GC.UI:ToggleRank(); GC.UI:RefreshRank()
 local rf = GymChallengeRankFrame
-check("rank has 9 columns", #rf.headers == 9)
+check("rank has 11 columns", #rf.headers == 11)
 local function rowName(i) return rf.rows[i].cells.name.text end
 for _, h in ipairs(rf.headers) do if h.col.key == "plank" then h.scripts.OnClick() end end
 check("sort by plank: own (more plank) first", rowName(1):find("Ich") ~= nil)
@@ -319,6 +319,24 @@ GC.UI:RefreshRank()
 check("sort by pushups: friend first", rowName(1):find("Freund") ~= nil and rf.rows[1].cells.pushups.text == "999")
 check("flights column", rf.rows[1].cells.flights.text == "2/1")
 check("realm hidden in ranking", rowName(1):find("Realm") == nil)
+-- points + ranks
+check("points calc", GC.CalcPoints({ squats = 10, situps = 10, pushups = 10, burpees = 10, plank = 120 }) == 10 + 10 + 20 + 30 + 20)
+check("rank bronze", GC.RankFor(0).key == "bronze")
+check("rank gold", GC.RankFor(800).key == "gold")
+check("rank challenger", GC.RankFor(50000).key == "challenger")
+local _, nxt = GC.RankFor(800)
+check("next rank platinum", nxt.key == "platinum")
+local function clickHeader(key) for _, h in ipairs(rf.headers) do if h.col.key == key then h.scripts.OnClick() end end end
+clickHeader("points")
+check("points sort desc: friend first", rowName(1):find("Freund") ~= nil)
+clickHeader("points")
+check("second click: ascending", GymChallengeDB.rankSortAsc == true and rowName(1):find("Ich") ~= nil)
+clickHeader("name")
+check("name sort A-Z", GymChallengeDB.rankSort == "name" and rowName(1):find("Freund") ~= nil)
+clickHeader("name")
+check("name sort Z-A", rowName(1):find("Ich") ~= nil)
+check("rank cell shows rank name", rf.rows[1].cells.rank.text:find("Bronze") ~= nil or rf.rows[1].cells.rank.text:find("Silber") ~= nil)
+GymChallengeDB.rankSort = nil; GymChallengeDB.rankSortAsc = nil
 for _, c in ipairs({ "", "rank", "status", "test death", "test flightstart", "test flightend", "test paladin", "bogus" }) do
   local ok, err = pcall(SlashCmdList["GYMCHALLENGE"], c)
   check("slash '" .. c .. "' " .. tostring(err), ok)
@@ -423,6 +441,14 @@ local hf = GymChallengeHistoryFrame
 hf:SetSize(800, 600)
 check("taller history more rows", hf.visibleRows > 14)
 GC.ClearTasks()
+
+-- rank up alert
+GymChallengeCharDB.lastRank = "bronze"
+local sq = GC.AddTask("squats", 300, "r_death")
+GC.CompleteTask(sq.id)
+check("rank up alert", Mock.lastPrint and Mock.lastPrint:find("Silber") ~= nil)
+check("title shows rank", GymChallengeFrame.title.text:find("Silber") ~= nil)
+GC.DeleteHistory(sq.id)
 
 -- Challenge options
 GC.ClearTasks()

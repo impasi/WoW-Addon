@@ -78,9 +78,17 @@ Das sind die Standardwerte. Unter **Optionen** (Button im Hauptfenster oder `/gy
 - **Gezählt werden nur erledigte Übungen:** Eine Übung zählt, sobald du auf „Erledigt“ klickst. Eine Flug-Plank zählt nur, wenn du nach der Landung „Ja“ wählst. Übungen, die du mit „Liste leeren“ entfernst, zählen nicht.
 - **Keine Doppelzählung:** Jeder sendet seine eigene Gesamtsumme mit einer Revisionsnummer. Der Empfänger ersetzt den alten Eintrag, statt etwas zu addieren. Gleiche oder ältere Daten werden ignoriert.
 - Empfangene Werte werden lokal gespeichert, für den ganzen Account. Sie bleiben auch nach dem Verlassen der Gruppe sichtbar. Dein eigener Eintrag ist grün und mit „(du)“ markiert. Namen werden ohne Realm angezeigt. Die Spalte „aktualisiert“ zeigt, wann der Spieler seine Werte zuletzt geändert hat.
-- Die Rangliste hat eigene Spalten für Squats, Liegestütze, Burpees, Sit-ups, Plank (Zeit), Flug +/- (Flug-Planks geschafft/nicht geschafft) und Gesamt (Summe der Wiederholungen). Mit einem Klick auf einen Spaltenkopf sortierst du nach dieser Spalte.
+- Die Rangliste hat eigene Spalten für Squats, Liegestütze, Burpees, Sit-ups, Plank (Zeit), Flug +/- (Flug-Planks geschafft/nicht geschafft) und Gesamt (Summe der Wiederholungen). Mit einem Klick auf einen Spaltenkopf sortierst du nach dieser Spalte, ein zweiter Klick dreht die Reihenfolge um.
 - Mit **Statistiken laden** fragst du alle Addon-Nutzer in deiner Gruppe sofort nach ihren aktuellen Werten.
 - Du kannst den Austausch abschalten und die Rangliste zurücksetzen.
+
+### Punkte und Ränge
+- Erledigte Übungen geben Punkte nach Schwierigkeit: Squats 1, Sit-ups 1, Liegestütze 2, Burpees 3 pro Wiederholung und Plank 10 pro Minute.
+- Ränge: Bronze (ab 0), Silber (250), Gold (750), Platin (1.500), Diamant (3.000), Master (6.000), Challenger (12.000).
+- Deinen Rang und deine Punkte siehst du im Titel des Hauptfensters. Beim Aufstieg kommt eine Meldung.
+- In der Rangliste stehen Rang und Punkte jedes Spielers. Fährst du mit der Maus über eine Zeile, siehst du, wie viele Punkte bis zum nächsten Rang fehlen.
+- Jeder Client berechnet die Punkte selbst aus den geteilten Übungszahlen. Übertragen werden weiterhin nur die Zahlen.
+- Jede Spalte ist sortierbar, auch der Name. Ein erneuter Klick dreht die Richtung um. Standard ist die Sortierung nach Punkten.
 
 **Technische Grenzen beim Austausch:**
 - In Instanzen und während der Chat-Sperre (Bosskämpfe, M+, PvP) dürfen Addons nichts senden. Das Addon sendet dann erst, wenn du wieder draußen bist.

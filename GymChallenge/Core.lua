@@ -141,6 +141,15 @@ end
 
 function GC.BumpStats()
   local c = GC.cdb
+  if GC.CalcPoints then
+    local rank = GC.RankFor(GC.CalcPoints(c.stats))
+    if c.lastRank and c.lastRank ~= rank.key then
+      local oldMin = 0
+      for _, r in ipairs(GC.RANKS) do if r.key == c.lastRank then oldMin = r.min end end
+      if rank.min > oldMin then GC.Alert(GC.L("rank_up", GC.RankName(rank, true)), "timer") end
+    end
+    c.lastRank = rank.key
+  end
   c.rev = c.rev + 1
   c.updated = time()
   if GC.Comm then GC.Comm:ScheduleBroadcast() end
