@@ -1,0 +1,16 @@
+## Interface: 16001
+## Title: Gym Challenge
+## Notes: Assigns workout exercises for in-game events (deaths, level-ups, flights, paladins, ...). Assigned exercises are not verified.
+## Notes-deDE: Weist Übungen für Spielereignisse zu (Tode, Level-ups, Flüge, Paladine, ...). Zugewiesene Übungen werden nicht überprüft.
+## Author: impasi
+## Version: 1.0.0
+## SavedVariables: GymChallengeDB
+## SavedVariablesPerCharacter: GymChallengeCharDB
+
+Locales.lua
+Core.lua
+Areas.lua
+Paladins.lua
+Events.lua
+Comm.lua
+UI.lua

@@ -1,0 +1,224 @@
+-- Logic tests for GymChallenge against the mock API. Run: python3 tests/run_tests.py
+local GC = {}
+local files = { "Locales.lua", "Core.lua", "Areas.lua", "Paladins.lua", "Events.lua", "Comm.lua", "UI.lua" }
+for _, f in ipairs(files) do
+  local chunk = assert(loadfile(ADDON_DIR .. "/" .. f))
+  chunk("GymChallenge", GC)
+end
+
+local passed, failed = 0, 0
+local function check(name, cond)
+  if cond then passed = passed + 1 else failed = failed + 1; print("FAIL: " .. name) end
+end
+local function tasksOf(kind)
+  local n, amount = 0, 0
+  for _, t in ipairs(GymChallengeCharDB.tasks) do
+    if t.kind == kind then n = n + 1; amount = amount + (t.amount or 0) end
+  end
+  return n, amount
+end
+
+GC.debug = true
+Mock.fire("ADDON_LOADED", "GymChallenge")
+Mock.fire("PLAYER_ENTERING_WORLD", true, false)
+Mock.tick()
+
+-- Death / level / taxi node
+Mock.fire("PLAYER_DEAD")
+check("death -> 10 squats", select(2, tasksOf("squats")) == 10)
+Mock.fire("PLAYER_LEVEL_UP", 13)
+check("level -> 5 burpees", select(2, tasksOf("burpees")) == 5)
+Mock.fire("UI_INFO_MESSAGE", 0, ERR_NEWTAXIPATH)
+Mock.fire("CHAT_MSG_SYSTEM", ERR_NEWTAXIPATH) -- same discovery twice
+check("taxi node -> 15 squats once", select(2, tasksOf("squats")) == 25)
+
+-- Paladin outside crowded area: 5 push-ups, once per hour per name
+Mock.units.nameplate1 = { name = "Lichtbringer", realm = nil, class = "PALADIN", player = true }
+Mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+Mock.tick(5)
+check("uncrowded paladin -> 5 push-ups", select(2, tasksOf("pushups")) == 5)
+Mock.advance(1800); Mock.tick()
+check("same paladin within hour not counted", select(2, tasksOf("pushups")) == 5)
+Mock.advance(1800); Mock.tick()
+check("same paladin after hour counted again", select(2, tasksOf("pushups")) == 10)
+Mock.units.nameplate1 = nil
+
+-- Group member paladin never counts
+Mock.units.nameplate2 = { name = "Gruppenpala", class = "PALADIN", player = true, party = true }
+Mock.tick(2)
+check("group paladin not counted", select(2, tasksOf("pushups")) == 10)
+Mock.units.nameplate2 = nil
+
+-- Crowded area (city): collect, show on leave
+Mock.zone = "Sturmwind"; Mock.mapID = 84
+Mock.fire("ZONE_CHANGED_NEW_AREA"); Mock.tick()
+check("city is crowded", GC.Areas.IsCrowded())
+Mock.units.nameplate3 = { name = "PalaA", class = "PALADIN", player = true }
+Mock.units.nameplate4 = { name = "PalaB", class = "PALADIN", player = true }
+Mock.units.nameplate5 = { name = "Krieger", class = "WARRIOR", player = true }
+Mock.tick(3)
+check("crowded collects 2", GymChallengeCharDB.crowded.count == 2)
+check("no push-ups yet in crowded", select(2, tasksOf("pushups")) == 10)
+Mock.units.nameplate3, Mock.units.nameplate4, Mock.units.nameplate5 = nil, nil, nil
+Mock.zone = "Wald von Elwynn"; Mock.mapID = 37
+Mock.tick()
+check("leaving crowded -> 2 push-ups", select(2, tasksOf("pushups")) == 12)
+check("crowded counter reset", GymChallengeCharDB.crowded.count == 0)
+
+-- Learned vendor spot
+Mock.pos = { 100, 100 }
+Mock.fire("MERCHANT_SHOW"); Mock.tick()
+check("vendor spot crowded", GC.Areas.IsCrowded())
+Mock.pos = { 132, 100 } Mock.tick() -- inside radius + hysteresis
+check("hysteresis keeps crowded", GC.Areas.IsCrowded())
+Mock.pos = { 200, 100 } Mock.tick()
+check("far from spot uncrowded", not GC.Areas.IsCrowded())
+
+-- Flight leaving a crowded area: summary before flight
+Mock.pos = { 100, 100 } Mock.tick()
+Mock.units.nameplate6 = { name = "PalaC", class = "PALADIN", player = true }
+Mock.tick()
+Mock.units.nameplate6 = nil
+check("collected at flight master", GymChallengeCharDB.crowded.count == 1)
+Mock.onTaxi = true
+Mock.fire("PLAYER_CONTROL_LOST"); Mock.tick()
+check("flight started", GC.Events.IsFlying())
+check("summary before flight", select(2, tasksOf("pushups")) == 13)
+Mock.tick(90)
+Mock.onTaxi = false
+Mock.pos = { 5000, 5000 }
+Mock.fire("PLAYER_CONTROL_GAINED"); Mock.tick()
+check("flight ended", not GC.Events.IsFlying())
+local landed
+for _, t in ipairs(GymChallengeCharDB.tasks) do if t.kind == "flight" then landed = t end end
+check("flight duration measured ~91s", landed and landed.state == "landed" and landed.amount >= 90 and landed.amount <= 93)
+check("plank stat has flight time", GymChallengeCharDB.stats.plank == landed.amount)
+GC.AnswerFlight(landed.id, true)
+check("flight answer stored", GymChallengeCharDB.stats.flightsMade == 1 and tasksOf("flight") == 0)
+
+-- Dungeon leave
+Mock.instance = { true, "party" }
+Mock.fire("PLAYER_ENTERING_WORLD", false, false)
+Mock.instance = { false, "none" }
+Mock.fire("PLAYER_ENTERING_WORLD", false, false)
+check("leaving dungeon -> 20 sit-ups", select(2, tasksOf("situps")) == 20)
+Mock.instance = { true, "raid" }
+Mock.fire("PLAYER_ENTERING_WORLD", false, false)
+Mock.ghost = true
+Mock.instance = { false, "none" }
+Mock.fire("PLAYER_ENTERING_WORLD", false, false)
+Mock.ghost = false
+check("leaving as ghost not counted", select(2, tasksOf("situps")) == 20)
+Mock.instance = { true, "pvp" }
+Mock.fire("PLAYER_ENTERING_WORLD", false, false)
+Mock.instance = { false, "none" }
+Mock.fire("PLAYER_ENTERING_WORLD", true, false) -- login after disconnect
+check("disconnect/login outside not counted", select(2, tasksOf("situps")) == 20)
+
+-- Elite kill (target based), not in instances
+Mock.units.target = { name = "Hogger", guid = "C-1", classification = "elite" }
+Mock.fire("PLAYER_TARGET_CHANGED")
+Mock.units.target.dead = true
+Mock.fire("UNIT_HEALTH", "target"); Mock.tick(2)
+check("elite kill -> 20s plank", select(2, tasksOf("plank")) == 20)
+Mock.fire("PLAYER_TARGET_CHANGED"); Mock.tick()
+check("dead elite retargeted not counted", select(2, tasksOf("plank")) == 20)
+Mock.instance = { true, "party" }
+Mock.units.target = { name = "Dungeonelite", guid = "C-2", classification = "elite" }
+Mock.fire("PLAYER_TARGET_CHANGED")
+Mock.units.target.dead = true
+Mock.tick(2)
+check("elite in dungeon not counted", select(2, tasksOf("plank")) == 20)
+Mock.instance = { false, "none" }
+Mock.units.target = { name = "Wolf", guid = "C-3", classification = "normal" }
+Mock.fire("PLAYER_TARGET_CHANGED"); Mock.units.target.dead = true; Mock.tick()
+check("normal mob not counted", select(2, tasksOf("plank")) == 20)
+Mock.units.target = nil
+
+-- Plank timer only on click, never auto-completed
+local plank
+for _, t in ipairs(GymChallengeCharDB.tasks) do if t.kind == "plank" then plank = t end end
+Mock.tick(30)
+check("timer not started automatically", plank.timerStart == nil)
+GC.StartTimer(plank.id); Mock.tick(25)
+check("timer finished but task still open", plank.timerAlerted and GC.FindTask(plank.id) ~= nil)
+GC.CompleteTask(plank.id)
+check("manual completion removes task", GC.FindTask(plank.id) == nil)
+
+-- Clear list keeps statistics
+local before = GymChallengeCharDB.stats.squats
+GC.ClearTasks()
+check("clear empties list", #GymChallengeCharDB.tasks == 0)
+check("clear keeps stats", GymChallengeCharDB.stats.squats == before)
+
+-- Session cooldown: reset by reload (fresh Lua state) – simulated by clearing table
+-- (real reload re-runs the files). Here we just verify the table is not saved.
+check("cooldown not in SavedVariables", GymChallengeCharDB.seen == nil and GymChallengeDB.seen == nil)
+
+-- Comm: join group, hello + stats sent; receive and de-duplicate
+Mock.inGroup = true
+Mock.units.party1 = { name = "Freund", player = true, party = true }
+Mock.groupMembers = { "party1" }
+Mock.fire("GROUP_ROSTER_UPDATE"); Mock.tick(5)
+local sawHello, sawStats, sawWhisper = false, false, false
+for _, m in ipairs(Mock.sent) do
+  if m.text == "H1" and m.chatType == "PARTY" then sawHello = true end
+  if m.text:sub(1, 2) == "S1" then sawStats = true end
+  if m.chatType == "WHISPER" and m.target == "Freund-Realm" then sawWhisper = true end
+  check("message <= 255 bytes", #m.text <= 255)
+end
+check("hello on join", sawHello)
+check("stats on join", sawStats)
+check("whisper fallback", sawWhisper)
+
+local msg = "S1;5;" .. (Mock.now - 60) .. ";10;20;5;20;300;1;0"
+Mock.fire("CHAT_MSG_ADDON", "GymChallenge", msg, "PARTY", "Freund-Realm")
+Mock.fire("CHAT_MSG_ADDON", "GymChallenge", msg, "WHISPER", "Freund-Realm") -- duplicate
+local e = GymChallengeDB.leaderboard["Freund-Realm"]
+check("received stored", e and e.pushups == 20 and e.plank == 300)
+check("duplicate not added", e.pushups == 20)
+Mock.fire("CHAT_MSG_ADDON", "GymChallenge", "S1;6;" .. Mock.now .. ";10;25;5;20;300;1;0", "PARTY", "Freund-Realm")
+check("update replaces", GymChallengeDB.leaderboard["Freund-Realm"].pushups == 25)
+Mock.fire("CHAT_MSG_ADDON", "GymChallenge", "S1;99;1;0;999;0;0;0;0;0", "PARTY", "Ich-Realm")
+check("own echo ignored", GymChallengeDB.leaderboard["Ich-Realm"] == nil)
+
+-- Stats change -> broadcast after debounce; blocked in instances
+Mock.sent = {}
+Mock.instance = { true, "party" }
+GC.AddTask("squats", 10, "r_death"); Mock.tick(8)
+check("no send inside instance", #Mock.sent == 0)
+Mock.instance = { false, "none" }
+Mock.tick(3)
+check("sent after leaving instance", #Mock.sent > 0)
+
+-- Comm off: nothing sent, nothing received
+GC.Comm:SetEnabled(false)
+Mock.sent = {}
+GC.AddTask("squats", 10, "r_death"); Mock.tick(8)
+check("comm off sends nothing", #Mock.sent == 0)
+Mock.fire("CHAT_MSG_ADDON", "GymChallenge", "S1;50;" .. Mock.now .. ";1;1;1;1;1;0;0", "PARTY", "Fremd-Realm")
+check("comm off ignores input", GymChallengeDB.leaderboard["Fremd-Realm"] == nil)
+GC.Comm:ResetLeaderboard()
+check("reset leaderboard", next(GymChallengeDB.leaderboard) == nil)
+
+-- Language switch + slash command help do not error
+GymChallengeDB.lang = "en"
+GC.UI:Refresh()
+check("english text", GC.TaskText({ kind = "pushups", amount = 5 }) == "5 push-ups")
+GymChallengeDB.lang = "de"
+check("german text", GC.TaskText({ kind = "pushups", amount = 5 }) == "5 Liegestütze")
+GC.UI:ToggleRank(); GC.UI:RefreshRank()
+for _, c in ipairs({ "", "rank", "status", "test death", "test flightstart", "test flightend", "test paladin", "bogus" }) do
+  local ok, err = pcall(SlashCmdList["GYMCHALLENGE"], c)
+  check("slash '" .. c .. "' " .. tostring(err), ok)
+end
+
+-- Secret values are skipped without errors
+issecretvalue = function(v) return v == "SECRET" end
+Mock.units.nameplate9 = { name = "SECRET", class = "PALADIN", player = true }
+local n0 = select(2, tasksOf("pushups"))
+local ok = pcall(Mock.tick, 2)
+check("secret name skipped", ok and select(2, tasksOf("pushups")) == n0)
+
+print(("passed %d, failed %d"):format(passed, failed))
+return failed
