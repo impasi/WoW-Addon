@@ -213,18 +213,78 @@ local ROWS_TOP = 106
 local MAX_ROWS = 25
 local MAIN_BOTTOM = 56
 
+local MAIN_MIN_W = 260
+local BTN_LINE = 26
+
+-- Places buttons left to right and starts a new line when the next one does
+-- not fit. Returns the lines as lists of buttons.
+local function flowLines(buttons, W)
+  local lines, line, x = {}, {}, 8
+  for _, b in ipairs(buttons) do
+    local w = b.w or 80
+    if #line > 0 and x + w > W - 8 then
+      table.insert(lines, line)
+      line, x = {}, 8
+    end
+    table.insert(line, b)
+    x = x + w + 4
+  end
+  if #line > 0 then table.insert(lines, line) end
+  return lines
+end
+
+-- Positions everything in the main window for its current size. Narrow
+-- windows get more button lines instead of overlapping buttons.
+local function placeMain(f)
+  local W = frameW(f, WIN_W)
+  local H = frameH(f, ROWS_TOP + ROWS * ROW_H + MAIN_BOTTOM)
+
+  local top = flowLines({ f.sound, f.mode }, W)
+  for li, line in ipairs(top) do
+    local x = 8
+    for _, b in ipairs(line) do
+      b:ClearAllPoints()
+      b:SetPoint("TOPLEFT", x, -32 - (li - 1) * BTN_LINE)
+      x = x + (b.w or 80) + 4
+    end
+  end
+  local statusY = 32 + #top * BTN_LINE + 2
+  f.status:ClearAllPoints(); f.status:SetPoint("TOPLEFT", 10, -statusY)
+  f.warn:ClearAllPoints();   f.warn:SetPoint("TOPLEFT", 10, -statusY - 14)
+  f.count:ClearAllPoints();  f.count:SetPoint("TOPLEFT", 10, -statusY - 30)
+  local rowsTop = statusY + 46
+
+  local bottom = flowLines({ f.clear, f.rank, f.history, f.spot }, W - 16) -- keep clear of the grip
+  for li, line in ipairs(bottom) do
+    local x = 8
+    for _, b in ipairs(line) do
+      b:ClearAllPoints()
+      b:SetPoint("BOTTOMLEFT", x, 24 + (#bottom - li) * BTN_LINE)
+      x = x + (b.w or 80) + 4
+    end
+  end
+  local bottomH = 24 + #bottom * BTN_LINE + 6
+
+  f.visibleRows = math.max(1, math.min(MAX_ROWS, math.floor((H - rowsTop - bottomH) / ROW_H)))
+  f.topLines, f.bottomLines = #top, #bottom
+  for i, r in ipairs(f.rows) do
+    r:ClearAllPoints()
+    r:SetPoint("TOPLEFT", 8, -rowsTop - (i - 1) * ROW_H)
+    r:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+  end
+end
+UI.placeMain = placeMain
+
 local function layoutMain(f)
   if not f.status then return end
   local W = frameW(f, WIN_W)
-  local H = frameH(f, ROWS_TOP + ROWS * ROW_H + MAIN_BOTTOM)
-  f.visibleRows = math.max(1, math.min(MAX_ROWS, math.floor((H - ROWS_TOP - MAIN_BOTTOM) / ROW_H)))
   for _, fs in ipairs({ f.status, f.warn, f.count, f.note }) do fs:SetWidth(W - 20) end
   if f.rows then UI:Refresh() end
 end
 
 function UI:Init()
   local f = makeWindow("GymChallengeFrame", WIN_W, ROWS_TOP + ROWS * ROW_H + MAIN_BOTTOM, "window",
-    { minW = WIN_W, minH = ROWS_TOP + 2 * ROW_H + MAIN_BOTTOM, onResize = layoutMain })
+    { minW = MAIN_MIN_W, minH = ROWS_TOP + 2 * ROW_H + MAIN_BOTTOM, onResize = layoutMain })
   self.frame = f
   f.visibleRows = ROWS
 
@@ -442,6 +502,7 @@ function UI:Refresh()
   setButtonText(f.history, GC.L("btn_history"))
   setButtonText(f.spot, GC.L("btn_spot"))
   f.note:SetText(GC.L("assigned_note"))
+  placeMain(f)
 
   local tasks = GC.cdb.tasks
   local visible = f.visibleRows or ROWS

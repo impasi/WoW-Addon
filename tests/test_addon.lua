@@ -353,6 +353,13 @@ mf.grip.scripts.OnMouseUp(mf.grip)
 check("main size saved", GymChallengeDB.windowSize and GymChallengeDB.windowSize.w == 500)
 mf:SetSize(380, 200)
 check("small main window keeps >= 1 row", mf.visibleRows >= 1)
+for _, b in ipairs({ mf.sound, mf.mode, mf.clear, mf.rank, mf.history, mf.spot }) do b.w = 90 end
+mf:SetSize(500, 600); GC.UI:Refresh()
+check("wide: bottom buttons in one line", mf.bottomLines == 1)
+mf:SetSize(260, 600); GC.UI:Refresh()
+check("narrow: bottom buttons wrap", mf.bottomLines >= 2)
+mf:SetSize(200, 600); GC.UI:Refresh()
+check("very narrow: top buttons wrap", mf.topLines == 2)
 local rf2 = GymChallengeRankFrame
 rf2:SetSize(900, 500)
 local nameCol
