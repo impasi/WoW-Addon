@@ -83,6 +83,11 @@ check("collected at flight master", GymChallengeCharDB.crowded.count == 1)
 Mock.onTaxi = true
 Mock.fire("PLAYER_CONTROL_LOST"); Mock.tick()
 check("flight started", GC.Events.IsFlying())
+local puFly = select(2, tasksOf("pushups"))
+Mock.units.nameplate7 = { name = "FlugPala", class = "PALADIN", player = true }
+Mock.fire("NAME_PLATE_UNIT_ADDED", "nameplate7"); Mock.tick()
+check("no paladins counted while flying", select(2, tasksOf("pushups")) == puFly and GC.Paladins.seen["FlugPala"] == nil)
+Mock.units.nameplate7 = nil
 Mock.tick(65)
 check("flight timer visible", GymChallengeFlightTimer:IsShown())
 check("flight timer shows time", GymChallengeFlightTimer.text:GetText():find("1:0%d") ~= nil)

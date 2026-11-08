@@ -51,6 +51,8 @@ function Paladins.Count(name)
 end
 
 function Paladins.CheckUnit(unit)
+  -- No paladins are counted during a flight (they are also not put on cooldown).
+  if GC.Events and GC.Events.IsFlying() then return end
   local name = Paladins.GetPaladinName(unit)
   if name then Paladins.Count(name) end
 end

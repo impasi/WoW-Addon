@@ -26,7 +26,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
   - Häfen, erkannt über Zonen- und Unterzonennamen.
   - Ein Umkreis von 30 m um jeden Händler und Flugmeister, dessen Fenster du einmal geöffnet hast. Das Addon lernt diese Orte selbst. Mit „Ort merken“ kannst du eine Stelle auch manuell speichern, z. B. einen Schiffsanleger.
   - Mit der Schaltfläche „Gebiet“ wechselst du zwischen Auto, immer Crowded und immer Uncrowded.
-  - Verlässt du eine Crowded Area per Flug, kommt die Summe **vor** dem Flug. Während des Flugs gilt die Gegend als uncrowded.
+  - Verlässt du eine Crowded Area per Flug, kommt die Summe **vor** dem Flug. Während des Flugs werden keine Paladine gezählt.
 - **Flugzeit-Anzeige:** Beim Abflug zeigt eine große, verschiebbare Anzeige oben in der Bildschirmmitte die erwartete Flugzeit und dann die Restzeit ("Flugzeit: 2:14 - noch 1:30"). Die API kennt keine Flugdauer. Deshalb merkt sich das Addon die Dauer jeder Strecke (Start > Ziel), die du einmal geflogen bist, für den ganzen Account. Beim ersten Flug auf einer Strecke steht dort "noch unbekannt". Flüge, deren Landung erst nach einem Login oder /reload erkannt wurde, werden nicht gelernt.
 - **Fliegen:** Nach der Landung gilt die Übung als erledigt. Das Addon fragt dich dann „Plank geschafft? Ja / Nein“ und speichert die Antwort in deiner Statistik.
 - **Instanz verlassen:** Ein Login nach einem Disconnect zählt nicht. Das Verlassen als Geist zählt auch nicht.
