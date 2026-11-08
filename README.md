@@ -1,7 +1,7 @@
 # Gym Challenge – Addon für WoW Forever
 
 Das Addon weist dir für Spielereignisse Übungen zu und zeigt sie in einer kleinen To-do-Liste an.
-Alle Werte sind **vom Addon zugewiesene Übungen**. Ob du sie wirklich gemacht hast, prüft das Addon nicht.
+Die Übungen weist das Addon zu. In deine Statistik und in die Rangliste kommen sie erst, wenn du sie als **erledigt** abhakst. Ob du sie wirklich gemacht hast, prüft das Addon nicht.
 
 Ziel-Client: **WoW Forever** mit `## Interface: 16001`, geprüft im Spiel mit `/dump select(4, GetBuildInfo())`.
 WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, also keine Classic-API.
@@ -38,7 +38,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 - **Fenstergröße:** Das Hauptfenster, die Rangliste und der Verlauf lassen sich über den Griff unten rechts größer und kleiner ziehen. In ein größeres Fenster passen mehr Zeilen. Wird es breiter, bekommen in der Rangliste die Namen und im Verlauf die Gründe mehr Platz. Ist das Hauptfenster schmal, verteilen sich die Buttons auf mehrere Reihen. Größe und Position werden gespeichert.
 - **Liste leeren** fragt vorher nach. Deine Statistik bleibt dabei erhalten.
 - Mit **DE/EN** wechselst du die Sprache, mit **Sound an/aus** schaltest du die Töne.
-- **Verlauf** zeigt alle zugewiesenen Übungen mit Zeit, Grund und Status (offen, erledigt, entfernt, gelandet, geschafft, nicht geschafft), die neuesten zuerst. Mit dem Mausrad blätterst du. Mit **X** löschst du ein einzelnes Ereignis, nach einer Rückfrage. Das Ereignis verschwindet dann auch aus deiner Statistik und aus der Rangliste deiner Gruppe. Gespeichert werden die letzten 500 Einträge.
+- **Verlauf** zeigt alle zugewiesenen Übungen mit Zeit, Grund und Status (offen, erledigt, entfernt, gelandet, geschafft, nicht geschafft), die neuesten zuerst. Mit dem Mausrad blätterst du. Mit **X** löschst du ein einzelnes Ereignis, nach einer Rückfrage. War das Ereignis schon erledigt, verschwindet es auch aus deiner Statistik und aus der Rangliste deiner Gruppe. Gespeichert werden die letzten 500 Einträge.
 - Die offene Liste und die gesammelten Paladine einer Crowded Area bleiben über `/reload` und Neustart erhalten.
 
 - **Minimap-Button:** Linksklick öffnet die Übungen, Rechtsklick die Rangliste und Shift+Linksklick den Verlauf. Den Button kannst du um die Minimap ziehen. Mit `/gym minimap` blendest du ihn ein oder aus. Hat ein anderes Addon LibDBIcon geladen (das tun die meisten Minimap-Sammler), meldet sich der Button dort an, sodass Sammler wie Good Addons ihn gruppieren können. Sonst erstellt das Addon einen eigenen Button direkt an der Minimap.
@@ -65,6 +65,7 @@ WoW Forever verwendet die moderne Addon-API mit den Midnight-Einschränkungen, a
 ## Gruppen-Rangliste
 - Wenn du einer Gruppe beitrittst, schicken sich alle Addon-Nutzer ihre Statistik. Ändert sich danach etwas, wird sie nach 5 Sekunden erneut gesendet.
 - Übertragen werden nur Zahlen: Revision, Zeitstempel, Squats, Liegestütze, Burpees, Sit-ups, Plank-Sekunden und Flug-Planks (geschafft / nicht geschafft). Eine Nachricht hat höchstens etwa 60 Byte, das Limit liegt bei 255.
+- **Gezählt werden nur erledigte Übungen:** Eine Übung zählt, sobald du auf „Erledigt“ klickst. Eine Flug-Plank zählt nur, wenn du nach der Landung „Ja“ wählst. Übungen, die du mit „Liste leeren“ entfernst, zählen nicht.
 - **Keine Doppelzählung:** Jeder sendet seine eigene Gesamtsumme mit einer Revisionsnummer. Der Empfänger ersetzt den alten Eintrag, statt etwas zu addieren. Gleiche oder ältere Daten werden ignoriert.
 - Empfangene Werte werden lokal gespeichert, für den ganzen Account. Sie bleiben auch nach dem Verlassen der Gruppe sichtbar. Dein eigener Eintrag ist grün und mit „(du)“ markiert. Namen werden ohne Realm angezeigt. Die Spalte „aktualisiert“ zeigt, wann der Spieler seine Werte zuletzt geändert hat.
 - Die Rangliste hat eigene Spalten für Squats, Liegestütze, Burpees, Sit-ups, Plank (Zeit), Flug +/- (Flug-Planks geschafft/nicht geschafft) und Gesamt (Summe der Wiederholungen). Mit einem Klick auf einen Spaltenkopf sortierst du nach dieser Spalte.

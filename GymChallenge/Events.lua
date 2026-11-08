@@ -106,7 +106,6 @@ function Events.EndFlight(endTime, recovered)
   if f.route and not recovered and not f.test and duration >= 5 then
     GC.db.flightTimes[f.route] = { t = duration, n = ((GC.db.flightTimes[f.route] or {}).n or 0) + 1 }
   end
-  GC.AddStat("plank", duration)
   GC.Alert(GC.L("alert_flight_end", GC.FormatDuration(duration)), "flight")
   if GC.UI and GC.UI.ShowLanded then GC.UI:ShowLanded(duration) end
   GC.Areas.Update()

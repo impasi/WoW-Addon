@@ -178,11 +178,11 @@ function GC.DeleteHistory(id)
   if not e then return end
   local st = GC.cdb.stats
   local function sub(key, n) st[key] = math.max(0, (st[key] or 0) - (n or 0)) end
+  -- Only events that were counted (done / made / failed) are subtracted.
   if e.kind == "flight" then
-    sub("plank", e.amount)
-    if e.status == "made" then sub("flightsMade", 1) end
+    if e.status == "made" then sub("plank", e.amount); sub("flightsMade", 1) end
     if e.status == "failed" then sub("flightsFailed", 1) end
-  else
+  elseif e.status == "done" then
     sub(e.kind, e.amount)
   end
   table.remove(GC.cdb.history, i)
@@ -210,7 +210,7 @@ function GC.AddTask(kind, amount, reason, reasonArg, opts)
   table.insert(c.tasks, task)
 
   if kind ~= "flight" then
-    GC.AddStat(kind, amount)
+    -- Statistics only count once the player marks the exercise as done.
     GC.AddHistory(task, "open")
     if not (opts and opts.silent) then
       GC.Alert(GC.L("alert_new", GC.TaskText(task), GC.ReasonText(task)))
@@ -227,9 +227,12 @@ function GC.FindTask(id)
 end
 
 -- Manual completion by the player.
+-- Only now the exercise counts for the statistics / ranking.
 function GC.CompleteTask(id)
-  local _, i = GC.FindTask(id)
-  if i then table.remove(GC.cdb.tasks, i) end
+  local task, i = GC.FindTask(id)
+  if not task then return end
+  table.remove(GC.cdb.tasks, i)
+  if task.kind ~= "flight" then GC.AddStat(task.kind, task.amount) end
   GC.SetHistoryStatus(id, "done")
   if GC.UI then GC.UI:Refresh() end
 end
@@ -239,6 +242,8 @@ function GC.AnswerFlight(id, made)
   local task, i = GC.FindTask(id)
   if not task then return end
   if made then
+    -- Only a made flight plank counts its seconds.
+    GC.cdb.stats.plank = GC.cdb.stats.plank + (task.amount or 0)
     GC.cdb.stats.flightsMade = GC.cdb.stats.flightsMade + 1
   else
     GC.cdb.stats.flightsFailed = GC.cdb.stats.flightsFailed + 1
@@ -271,6 +276,29 @@ function GC.ClearTasks()
   end
   GC.cdb.tasks = keep
   if GC.UI then GC.UI:Refresh() end
+end
+
+-- Version 2: statistics count only completed exercises. Older saved data
+-- counted every assigned exercise, so recompute it once from the history.
+function GC.MigrateStats()
+  local c = GC.cdb
+  if c.statsVersion == 2 then return end
+  for k in pairs(c.stats) do c.stats[k] = 0 end
+  for _, e in ipairs(c.history) do
+    if e.kind == "flight" then
+      if e.status == "made" then
+        c.stats.plank = c.stats.plank + (e.amount or 0)
+        c.stats.flightsMade = c.stats.flightsMade + 1
+      elseif e.status == "failed" then
+        c.stats.flightsFailed = c.stats.flightsFailed + 1
+      end
+    elseif e.status == "done" and c.stats[e.kind] then
+      c.stats[e.kind] = c.stats[e.kind] + (e.amount or 0)
+    end
+  end
+  c.statsVersion = 2
+  c.rev = c.rev + 1
+  c.updated = time()
 end
 
 function GC.ResetOwnStats()
@@ -328,6 +356,7 @@ GC.On("ADDON_LOADED", function(name)
   applyDefaults(GymChallengeCharDB, CHAR_DEFAULTS)
   GC.db = GymChallengeDB
   GC.cdb = GymChallengeCharDB
+  GC.MigrateStats()
 
   if GC.UI then GC.UI:Init() end
   if GC.Comm then GC.Comm:Init() end

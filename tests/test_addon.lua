@@ -144,8 +144,9 @@ check("landed time shown", GymChallengeFlightTimer:IsShown() and GymChallengeFli
 local landed
 for _, t in ipairs(GymChallengeCharDB.tasks) do if t.kind == "flight" then landed = t end end
 check("flight duration measured ~91s", landed and landed.state == "landed" and landed.amount >= 90 and landed.amount <= 93)
-check("plank stat has flight time", GymChallengeCharDB.stats.plank == landed.amount)
+check("flight plank not counted before answer", GymChallengeCharDB.stats.plank == 0)
 GC.AnswerFlight(landed.id, true)
+check("made flight plank counted", GymChallengeCharDB.stats.plank == landed.amount)
 check("flight answer stored", GymChallengeCharDB.stats.flightsMade == 1 and tasksOf("flight") == 0)
 
 Mock.tick(20)
@@ -226,6 +227,7 @@ check("manual completion removes task", GC.FindTask(plank.id) == nil)
 
 -- Clear list keeps statistics
 local before = GymChallengeCharDB.stats.squats
+check("open tasks not in stats", before == 0)
 GC.ClearTasks()
 check("clear empties list", #GymChallengeCharDB.tasks == 0)
 check("clear keeps stats", GymChallengeCharDB.stats.squats == before)
@@ -264,7 +266,7 @@ check("own echo ignored", GymChallengeDB.leaderboard["Ich-Realm"] == nil)
 -- Stats change -> broadcast after debounce; blocked in instances
 Mock.sent = {}
 Mock.instance = { true, "party" }
-GC.AddTask("squats", 10, "r_death"); Mock.tick(8)
+GC.CompleteTask(GC.AddTask("squats", 10, "r_death").id); Mock.tick(8)
 check("no send inside instance", #Mock.sent == 0)
 Mock.instance = { false, "none" }
 Mock.tick(3)
@@ -314,8 +316,16 @@ check("history entry added", #GymChallengeCharDB.history == histBefore + 1 and G
 GC.UI:ToggleHistory()
 check("history window shows newest first", GymChallengeHistoryFrame.rows[1].entry.id == e.id)
 check("history row text", GymChallengeHistoryFrame.rows[1].cells.ex.text == "15 Squats")
+check("open task not counted", GymChallengeCharDB.stats.squats == sq0)
+GC.CompleteTask(e.id)
+check("completed task counted", GymChallengeCharDB.stats.squats == sq0 + 15)
+GC.CompleteTask(e.id)
+check("double complete counts once", GymChallengeCharDB.stats.squats == sq0 + 15)
 GC.DeleteHistory(e.id)
 check("delete subtracts stats", GymChallengeCharDB.stats.squats == sq0)
+local o = GC.AddTask("squats", 10, "r_death")
+GC.DeleteHistory(o.id)
+check("deleting open event does not subtract", GymChallengeCharDB.stats.squats == sq0)
 check("delete removes open task", GC.FindTask(e.id) == nil)
 check("delete removes history", GC.FindHistory(e.id) == nil)
 local d = GC.AddTask("burpees", 5, "r_level", 14)
@@ -329,10 +339,16 @@ local pl0, fm0 = GymChallengeCharDB.stats.plank, GymChallengeCharDB.stats.flight
 GC.AnswerFlight(fl.id, true)
 check("flight made in history", GC.FindHistory(fl.id).status == "made")
 GC.DeleteHistory(fl.id)
-check("flight delete subtracts", GymChallengeCharDB.stats.plank == pl0 - fl.amount and GymChallengeCharDB.stats.flightsMade == fm0)
+check("flight delete subtracts", GymChallengeCharDB.stats.plank == pl0 and GymChallengeCharDB.stats.flightsMade == fm0)
 local c1 = GC.AddTask("situps", 20, "r_dungeon")
 GC.ClearTasks()
 check("cleared status", GC.FindHistory(c1.id).status == "cleared")
+check("cleared not counted", GymChallengeCharDB.stats.situps == 0)
+-- migration recomputes from history
+GymChallengeCharDB.statsVersion = nil
+GymChallengeCharDB.stats.squats = 9999
+GC.MigrateStats()
+check("migration recomputes from done entries", GymChallengeCharDB.stats.squats < 9999 and GymChallengeCharDB.statsVersion == 2)
 local rev0 = GymChallengeCharDB.rev
 GC.DeleteHistory(c1.id)
 check("delete bumps revision for ranking", GymChallengeCharDB.rev > rev0)
