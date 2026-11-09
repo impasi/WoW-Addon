@@ -1,6 +1,6 @@
 -- Logic tests for GymChallenge against the mock API. Run: python3 tests/run_tests.py
 local GC = {}
-local files = { "Locales.lua", "Core.lua", "Challenges.lua", "Points.lua", "Areas.lua", "Paladins.lua", "Events.lua", "Comm.lua", "UI.lua", "Minimap.lua" }
+local files = { "Locales.lua", "Core.lua", "Challenges.lua", "Points.lua", "Areas.lua", "Paladins.lua", "Events.lua", "Comm.lua", "Shame.lua", "UI.lua", "Minimap.lua" }
 for _, f in ipairs(files) do
   local chunk = assert(loadfile(ADDON_DIR .. "/" .. f))
   chunk("GymChallenge", GC)
@@ -525,6 +525,102 @@ Mock.units.nameplate9 = { name = "SECRET", class = "PALADIN", player = true }
 local n0 = select(2, tasksOf("pushups"))
 local ok = pcall(Mock.tick, 2)
 check("secret name skipped", ok and select(2, tasksOf("pushups")) == n0)
+
+-- Shame messages
+issecretvalue = nil
+Mock.units.nameplate9 = nil
+GC.ClearTasks()
+Mock.inGroup = false; Mock.groupMembers = {}
+Mock.instance = { false, "none" }; Mock.lockdown = false
+GC.Comm.OnRosterUpdate()
+C_FriendList = {
+  GetNumFriends = function() return 2 end,
+  GetFriendInfoByIndex = function(i)
+    return ({ { name = "Kumpel", connected = true }, { name = "Offline", connected = false } })[i]
+  end,
+}
+BNET_CLIENT_WOW = "WoW"
+Mock.bnSent = {}
+function BNGetNumFriends() return 1 end
+function BNSendGameData(id, prefix, text) table.insert(Mock.bnSent, { id = id, text = text }) end
+C_BattleNet = {
+  GetFriendNumGameAccounts = function() return 2 end,
+  GetFriendGameAccountInfo = function(i, j)
+    if j == 1 then return { isOnline = true, clientProgram = "WoW", gameAccountID = 77, characterName = "BnetKumpel" } end
+    return { isOnline = true, clientProgram = "App", gameAccountID = 78 }
+  end,
+}
+local function shameSent()
+  local list = {}
+  for _, m in ipairs(Mock.sent) do if m.text:sub(1, 2) == "X1" then table.insert(list, m) end end
+  return list
+end
+Mock.sent = {}
+GC.AddTask("squats", 10, "r_death")
+Mock.tick(29 * 60)
+check("no shame before 30 min", #shameSent() == 0 and #Mock.bnSent == 0)
+Mock.tick(60 + 3)
+local ss = shameSent()
+check("shame whisper to online friend only", #ss == 1 and ss[1].chatType == "WHISPER" and ss[1].target == "Kumpel")
+check("shame payload", ss[1] and ss[1].text == "X1;Ich;squats;10;30")
+check("shame to bnet wow friend only", #Mock.bnSent == 1 and Mock.bnSent[1].id == 77)
+Mock.tick(120)
+check("shame sent only once per task", #shameSent() == 1 and #Mock.bnSent == 1)
+-- group members get it as well, sent after leaving an instance
+GC.ClearTasks(); Mock.sent = {}; Mock.bnSent = {}
+Mock.inGroup = true; Mock.groupMembers = { "party1" }
+Mock.units.party1 = { name = "Gruppi", party = true }
+GC.Comm.OnRosterUpdate()
+Mock.instance = { true, "party" }
+GC.AddTask("burpees", 5, "r_level")
+Mock.tick(30 * 60 + 2)
+check("no shame sent inside instance", #shameSent() == 0)
+Mock.instance = { false, "none" }
+Mock.tick(5)
+ss = shameSent()
+local kinds = {}
+for _, m in ipairs(ss) do kinds[m.chatType .. ":" .. tostring(m.target)] = true end
+check("shame after instance: group + whispers", kinds["PARTY:nil"] and kinds["WHISPER:Gruppi-Realm"] and kinds["WHISPER:Kumpel"])
+-- toggle off: nothing sent
+GC.ClearTasks(); Mock.sent = {}; Mock.bnSent = {}
+GC.db.shameSend = false
+GC.AddTask("situps", 20, "r_dungeon")
+Mock.tick(31 * 60)
+check("shame send off", #shameSent() == 0 and #Mock.bnSent == 0)
+GC.db.shameSend = true
+-- shame message still goes out when ranking sharing is off
+GC.db.comm = false
+GC.ClearTasks(); Mock.sent = {}
+GC.AddTask("situps", 20, "r_dungeon")
+Mock.tick(30 * 60 + 3)
+check("shame sent with ranking sharing off", #shameSent() > 0)
+GC.db.comm = true
+GC.ClearTasks()
+-- receiving
+Mock.lastPrint = nil
+GC.Comm.OnMessage("GymChallenge", "X1;Freund-Realm;pushups;5;30", "WHISPER", "Freund-Realm")
+check("shame received alert", Mock.lastPrint and Mock.lastPrint:find("Freund hat seit 30 Min. 5 Liegest", 1, true))
+Mock.lastPrint = nil
+GC.Comm.OnMessage("GymChallenge", "X1;Freund-Realm;pushups;5;30", "PARTY", "Freund-Realm")
+Mock.fire("BN_CHAT_MSG_ADDON", "GymChallenge", "X1;Freund-Realm;pushups;5;30", "WHISPER", 77)
+check("duplicate shame ignored", Mock.lastPrint == nil)
+GC.Comm.OnMessage("GymChallenge", "X1;Ich;pushups;5;30", "PARTY", "Ich")
+check("own shame ignored", Mock.lastPrint == nil)
+GC.Comm.OnMessage("GymChallenge", "X1;Boese;evil;5;30", "WHISPER", "Boese")
+check("invalid kind ignored", Mock.lastPrint == nil)
+Mock.fire("BN_CHAT_MSG_ADDON", "GymChallenge", "X1;Bnet-Realm;squats;10;45", "WHISPER", 77)
+check("bnet shame received", Mock.lastPrint and Mock.lastPrint:find("Bnet", 1, true))
+GC.db.shameReceive = false; Mock.lastPrint = nil
+GC.Comm.OnMessage("GymChallenge", "X1;Anderer;squats;10;30", "WHISPER", "Anderer")
+check("shame receive off", Mock.lastPrint == nil)
+GC.db.shameReceive = true
+check("slash shame", pcall(SlashCmdList["GYMCHALLENGE"], "shame send") and GC.db.shameSend == false)
+SlashCmdList["GYMCHALLENGE"]("shame send")
+check("options shame checkbox", (function()
+  local f = GC.UI.optionsFrame; f:Show(); GC.UI:RefreshOptions()
+  f.shame[2].scripts.OnClick(); local off = GC.db.shameReceive == false
+  f.shame[2].scripts.OnClick(); return off and GC.db.shameReceive
+end)())
 
 print(("passed %d, failed %d"):format(passed, failed))
 return failed

@@ -1133,7 +1133,7 @@ end
 
 function UI:InitOptions()
   local n = #GC.CHALLENGE_ORDER
-  local f = makeWindow("GymChallengeOptionsFrame", OPT_W, 84 + n * OPT_ROW_H + 50, "optionsWindow")
+  local f = makeWindow("GymChallengeOptionsFrame", OPT_W, 84 + n * OPT_ROW_H + 50 + 52, "optionsWindow")
   self.optionsFrame = f
   f.note = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   f.note:SetPoint("TOPLEFT", 12, -34)
@@ -1193,6 +1193,23 @@ function UI:InitOptions()
     f.rows[i] = r
   end
 
+  -- Shame message toggles (account wide).
+  f.shame = {}
+  for i, key in ipairs({ "shameSend", "shameReceive" }) do
+    local c = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+    c:SetSize(24, 24)
+    c:SetPoint("TOPLEFT", 10, -70 - n * OPT_ROW_H - 4 - (i - 1) * 24)
+    c:SetScript("OnClick", function()
+      GC.db[key] = not GC.db[key]
+      UI:RefreshOptions()
+    end)
+    c.label = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    c.label:SetPoint("LEFT", c, "RIGHT", 4, 0)
+    oneLine(c.label, OPT_W - 60)
+    c.key = key
+    f.shame[i] = c
+  end
+
   f.reset = makeButton(f, 120, function()
     UI:Confirm(GC.L("opt_confirm_reset"), function() GC.ResetChallenges(); UI:RefreshOptions() end)
   end)
@@ -1210,6 +1227,10 @@ function UI:RefreshOptions()
   f.note:SetText(GC.L("opt_note"))
   setButtonText(f.reset, GC.L("opt_reset"))
   f.hint:SetText(GC.L("opt_hint"))
+  for _, c in ipairs(f.shame) do
+    c:SetChecked(GC.db[c.key] and true or false)
+    c.label:SetText(GC.L(c.key == "shameSend" and "opt_shame_send" or "opt_shame_receive"))
+  end
   for _, r in ipairs(f.rows) do
     local cfg = GC.Challenge(r.key)
     r.check:SetChecked(cfg.enabled and true or false)
@@ -1281,6 +1302,12 @@ SlashCmdList["GYMCHALLENGE"] = function(input)
   elseif cmd == "comm" and (arg == "on" or arg == "off") then
     GC.Comm:SetEnabled(arg == "on")
     GC.Print((arg == "on") and GC.L("rank_comm_on") or GC.L("rank_comm_off"))
+  elseif cmd == "shame" and (arg == "send" or arg == "receive") then
+    local key = (arg == "send") and "shameSend" or "shameReceive"
+    GC.db[key] = not GC.db[key]
+    GC.Print(GC.L("shame_set", GC.db.shameSend and GC.L("on") or GC.L("off"),
+      GC.db.shameReceive and GC.L("on") or GC.L("off")))
+    UI:RefreshOptions()
   elseif cmd == "resetrank" then
     UI:Confirm(GC.L("confirm_reset_rank"), function() GC.Comm:ResetLeaderboard() end)
   elseif cmd == "resetstats" then

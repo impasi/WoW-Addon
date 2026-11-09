@@ -89,15 +89,32 @@ function Comm.StatsMessage()
     s.situps, s.plank, s.flightsMade, s.flightsFailed }, ";")
 end
 
-local function enqueue(text, chatType, target)
-  for _, q in ipairs(queue) do
-    if q.text:sub(1, 2) == text:sub(1, 2) and q.chatType == chatType and q.target == target then
-      q.text = text -- replace an older pending message of the same kind
-      return
+-- shame = true: a shame message (sent even when ranking sharing is off,
+-- never merged with other pending messages). chatType "BN": Battle.net
+-- friend, target = gameAccountID.
+-- Drops pending ranking messages but keeps shame messages.
+local function dropStats()
+  local keep = {}
+  for _, q in ipairs(queue) do if q.shame then table.insert(keep, q) end end
+  queue = keep
+end
+
+local function enqueue(text, chatType, target, shame)
+  if not shame then
+    for _, q in ipairs(queue) do
+      if not q.shame and q.text:sub(1, 2) == text:sub(1, 2) and q.chatType == chatType and q.target == target then
+        q.text = text -- replace an older pending message of the same kind
+        return
+      end
     end
   end
-  table.insert(queue, { text = text, chatType = chatType, target = target })
+  table.insert(queue, { text = text, chatType = chatType, target = target, shame = shame })
 end
+function Comm.Enqueue(text, chatType, target, shame) enqueue(text, chatType, target, shame) end
+Comm.groupChannel = function() return groupChannel() end
+Comm.members = function() return members end
+Comm.myName = myName
+Comm.isSelf = function(s) return isSelf(s) end
 
 -- Sends our stats to the group channel and whispers them to known addon users.
 function Comm:Broadcast(alsoWhisperAll)
@@ -139,16 +156,27 @@ local function processQueue()
     broadcastDue = nil
     Comm:Broadcast(false)
   end
-  if #queue == 0 or blocked() or not GC.db.comm then return end
-  for _ = 1, SENDS_PER_TICK do
+  if #queue == 0 or blocked() then return end
+  local sent = 0
+  while sent < SENDS_PER_TICK do
     local q = table.remove(queue, 1)
     if not q then break end
-    local ok, res = pcall(C_ChatInfo.SendAddonMessage, PREFIX, q.text, q.chatType, q.target)
+    if not (q.shame or GC.db.comm) then
+      -- ranking sharing switched off: drop stats messages
+    else
+    sent = sent + 1
+    local ok, res
+    if q.chatType == "BN" then
+      ok, res = pcall(BNSendGameData, q.target, PREFIX, q.text)
+    else
+      ok, res = pcall(C_ChatInfo.SendAddonMessage, PREFIX, q.text, q.chatType, q.target)
+    end
     if ok and type(res) == "number" and THROTTLED[res] then
       table.insert(queue, 1, q) -- try again next second
       break
     end
     GC.Debug("sent " .. q.chatType .. " " .. tostring(q.target) .. " -> " .. tostring(res))
+    end
   end
 end
 GC.OnTick(processQueue)
@@ -177,7 +205,12 @@ end
 function Comm.OnMessage(prefix, text, _, sender)
   if prefix ~= PREFIX then return end
   if GC.IsSecret(text) or GC.IsSecret(sender) then return end
-  if not GC.db.comm or type(text) ~= "string" or type(sender) ~= "string" then return end
+  if type(text) ~= "string" or type(sender) ~= "string" then return end
+  if text:sub(1, 2) == "X" .. PROTO then
+    if not isSelf(sender) and GC.Shame then GC.Shame.OnReceive(text) end
+    return
+  end
+  if not GC.db.comm then return end
   if isSelf(sender) then return end
   sender = normalize(sender)
   known[sender] = true
@@ -194,6 +227,12 @@ function Comm.OnMessage(prefix, text, _, sender)
 end
 GC.On("CHAT_MSG_ADDON", Comm.OnMessage)
 
+-- Battle.net friends (only shame messages are sent this way).
+GC.On("BN_CHAT_MSG_ADDON", function(prefix, text)
+  if prefix ~= PREFIX or GC.IsSecret(text) or type(text) ~= "string" then return end
+  if text:sub(1, 2) == "X" .. PROTO and GC.Shame then GC.Shame.OnReceive(text) end
+end)
+
 function Comm.OnRosterUpdate()
   local grouped = IsInGroup and IsInGroup() or false
   local now = groupMembers()
@@ -206,7 +245,7 @@ function Comm.OnRosterUpdate()
     Comm:Hello()
   end
   if not grouped then
-    queue = {}
+    dropStats()
     known = {}
   end
   wasGrouped = grouped
@@ -220,7 +259,7 @@ function Comm:SetEnabled(on)
     Comm.OnRosterUpdate()
     Comm:Hello()
   else
-    queue = {}
+    dropStats()
   end
   if GC.UI then GC.UI:RefreshRank() end
 end

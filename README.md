@@ -65,6 +65,7 @@ Das sind die Standardwerte. Unter **Optionen** (Button im Hauptfenster oder `/gy
 /gym spot               Ort merken (Umkreis oder ganzes Gebiet)
 /gym city               aktuelle Zone als Stadt hinzufügen/entfernen
 /gym comm on|off        Ranglisten-Austausch an/aus
+/gym shame send|receive Shame-Nachrichten senden/empfangen an/aus
 /gym resetrank          empfangene Ranglisten-Daten löschen
 /gym resetstats         eigene Statistik auf 0 setzen
 /gym status             Zone, Karten-ID, Crowded-Status (zum Debuggen)
@@ -95,6 +96,15 @@ Das sind die Standardwerte. Unter **Optionen** (Button im Hauptfenster oder `/gy
 - Laut Berichten aus der Forever-Beta melden manche Kanäle Erfolg, liefern aber nichts aus. Deshalb sendet das Addon zusätzlich per Addon-Flüsternachricht an jedes Gruppenmitglied.
 - Test- und Veteranen-Accounts können keine Addon-Nachrichten senden.
 - Das Limit liegt bei etwa 10 Nachrichten pro Präfix als Burst, danach 1 pro Sekunde. Das Addon sendet höchstens 2 pro Sekunde.
+
+## Shame-Nachricht
+- Ist eine Übung **30 Minuten** offen, bekommen deine Freunde mit dem Addon eine Meldung: „Schande! Name hat seit 30 Min. 10 Squats nicht gemacht!“
+- Gezählt wird nur Spielzeit, während du eingeloggt bist. Ausloggen löst keine Nachricht aus. Der Zähler wird mit der Aufgabe gespeichert.
+- Pro Übung wird höchstens eine Nachricht gesendet. Flug-Planks sind ausgenommen.
+- Empfänger: deine Gruppe (Kanal und Flüstern), Online-Freunde aus der Freundesliste (Flüstern) und Battle.net-Freunde, die gerade WoW spielen. Wer das Addon nicht hat, sieht nichts, weil Addon-Nachrichten unsichtbar sind. Wer genau das Addon hat, kann das Addon vorher nicht wissen.
+- Übertragen werden nur Name, Übung, Anzahl und Minuten.
+- In den Optionen (und mit `/gym shame send` bzw. `/gym shame receive`) kannst du Senden und Empfangen getrennt abschalten. Die Shame-Nachricht hängt nicht am Ranglisten-Austausch.
+- Grenzen: In Instanzen und während der Chat-Sperre wird sie erst danach gesendet. Test-Accounts können nicht senden. Ob Battle.net-Addon-Nachrichten (`BNSendGameData`) auf WoW Forever ankommen, ist **nicht im Spiel getestet**. Freunde von einem anderen Realm, die nicht in der Freundesliste stehen, erreicht das Addon nur über Battle.net.
 
 ## Installation
 1. Lade das Repo herunter: Auf GitHub unter **Code → Download ZIP**, dann entpacken.

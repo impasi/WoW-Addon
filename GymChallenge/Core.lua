@@ -1,7 +1,7 @@
 local ADDON_NAME, GC = ...
 _G.GymChallenge = GC
 
-GC.version = "1.0.1"
+GC.version = "1.0.2"
 
 -- Exercise kinds. "plank" amounts are seconds; the others are repetitions.
 GC.KINDS = { "squats", "pushups", "burpees", "situps", "plank" }
@@ -10,6 +10,8 @@ local ACCOUNT_DEFAULTS = {
   lang = nil,           -- nil = follow client locale
   sound = true,
   comm = true,          -- group ranking exchange
+  shameSend = true,     -- tell friends when an exercise stays open for 30 min
+  shameReceive = true,  -- show shame messages from friends
   crowdedMode = "auto", -- "auto" | "on" | "off"
   spotRadius = 30,      -- yards around learned vendor/flight master spots
   spots = {},           -- learned crowded spots { x, y, instance }
