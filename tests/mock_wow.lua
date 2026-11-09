@@ -104,7 +104,7 @@ end
 function UnitGUID(u) return U(u) and U(u).guid end
 function UnitClassification(u) return U(u) and U(u).classification or "normal" end
 function UnitIsDead(u) return U(u) and U(u).dead or false end
-function UnitIsDeadOrGhost(u) return Mock.ghost or false end
+function UnitIsDeadOrGhost(u) return (Mock.ghost or Mock.dead) and true or false end
 function UnitLevel() return 12 end
 function UnitOnTaxi() return Mock.onTaxi end
 function UnitPosition() return Mock.pos[2], Mock.pos[1], 0, 0 end

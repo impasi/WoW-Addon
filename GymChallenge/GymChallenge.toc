@@ -3,7 +3,7 @@
 ## Notes: Assigns workout exercises for in-game events (deaths, level-ups, flights, paladins, ...). Assigned exercises are not verified.
 ## Notes-deDE: Weist Übungen für Spielereignisse zu (Tode, Level-ups, Flüge, Paladine, ...). Zugewiesene Übungen werden nicht überprüft.
 ## Author: impasi
-## Version: 1.0.0
+## Version: 1.0.1
 ## IconTexture: Interface\Icons\Spell_Nature_Strength
 ## AddonCompartmentFunc: GymChallenge_OnAddonCompartmentClick
 ## SavedVariables: GymChallengeDB

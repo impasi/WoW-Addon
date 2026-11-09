@@ -43,8 +43,21 @@ LibStub = nil
 check("compartment func exists", type(GymChallenge_OnAddonCompartmentClick) == "function")
 
 -- Death / level / taxi node
+Mock.dead = true
 Mock.fire("PLAYER_DEAD")
-check("death -> 10 squats", select(2, tasksOf("squats")) == 10)
+Mock.fire("PLAYER_DEAD") -- fired again for the same death
+Mock.tick()
+Mock.fire("PLAYER_ALIVE") -- released spirit: now a ghost, still the same death
+Mock.ghost = true; Mock.dead = false
+Mock.fire("PLAYER_DEAD")
+check("death -> 10 squats once", select(2, tasksOf("squats")) == 10)
+Mock.ghost = false
+Mock.fire("PLAYER_UNGHOST")
+Mock.dead = true
+Mock.fire("PLAYER_DEAD")
+check("next death counts again", select(2, tasksOf("squats")) == 20)
+Mock.dead = false; Mock.tick()
+for i = #GymChallengeCharDB.tasks, 1, -1 do if GymChallengeCharDB.tasks[i].reason == "r_death" then table.remove(GymChallengeCharDB.tasks, i); break end end
 Mock.fire("PLAYER_LEVEL_UP", 13)
 check("level -> 5 burpees", select(2, tasksOf("burpees")) == 5)
 Mock.fire("UI_INFO_MESSAGE", 0, ERR_NEWTAXIPATH)

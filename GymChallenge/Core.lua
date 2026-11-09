@@ -1,7 +1,7 @@
 local ADDON_NAME, GC = ...
 _G.GymChallenge = GC
 
-GC.version = "1.0.0"
+GC.version = "1.0.1"
 
 -- Exercise kinds. "plank" amounts are seconds; the others are repetitions.
 GC.KINDS = { "squats", "pushups", "burpees", "situps", "plank" }

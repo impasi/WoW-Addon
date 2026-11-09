@@ -8,10 +8,24 @@ Events.loginCheckPending = true
 -------------------------------------------------------------------------------
 -- Death: 10 squats
 -------------------------------------------------------------------------------
+-- PLAYER_DEAD can fire more than once for the same death (e.g. again when
+-- releasing the spirit). Each death counts once: the flag is only cleared
+-- when the player is alive again (resurrected or back in the body).
 function Events.OnDeath()
+  if GC.cdb.deathCounted then return end
+  GC.cdb.deathCounted = true
   GC.Assign("death", 1, "r_death")
 end
 GC.On("PLAYER_DEAD", Events.OnDeath)
+
+function Events.CheckAlive()
+  if not GC.cdb.deathCounted then return end
+  local deadOrGhost = GC.SafeCall(UnitIsDeadOrGhost, "player")
+  if deadOrGhost == false then GC.cdb.deathCounted = nil end
+end
+GC.On("PLAYER_ALIVE", Events.CheckAlive)
+GC.On("PLAYER_UNGHOST", Events.CheckAlive)
+GC.OnTick(Events.CheckAlive)
 
 -------------------------------------------------------------------------------
 -- Level up: 5 burpees
